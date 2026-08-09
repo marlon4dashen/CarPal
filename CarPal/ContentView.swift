@@ -36,8 +36,13 @@ struct ContentView: View {
         do {
             try store.load()
 #if DEBUG
-            if store.vehicle == nil, DebugLaunchConfiguration.seedsPreviewVehicle {
-                try store.create(from: .lexusNXPreview)
+            if DebugLaunchConfiguration.seedsPreviewVehicle {
+                let previewDraft = DebugLaunchConfiguration.previewDraft
+                if store.vehicle == nil {
+                    try store.create(from: previewDraft)
+                } else if DebugLaunchConfiguration.resetsPreviewVehicle {
+                    try store.update(with: previewDraft)
+                }
             }
 #endif
             self.store = store
@@ -200,6 +205,31 @@ private enum DebugLaunchConfiguration {
 
     static var seedsPreviewVehicle: Bool {
         arguments.contains("-seedPreviewVehicle")
+    }
+
+    static var resetsPreviewVehicle: Bool {
+        arguments.contains("-resetPreviewVehicle")
+    }
+
+    static var previewDraft: VehicleDraft {
+        var draft = VehicleDraft.lexusNXPreview
+
+        if arguments.contains("-previewFallbackVehicle") {
+            draft.nickname = "My BMW"
+            draft.make = "BMW"
+            draft.model = "330i"
+            draft.modelYear = "2021"
+            draft.trim = "Sport"
+        }
+
+        if let paintArgument = arguments.first(where: {
+            $0.hasPrefix("-previewPaintColor=")
+        }) {
+            let value = String(paintArgument.dropFirst("-previewPaintColor=".count))
+            draft.colour = VehiclePaintColor(profileValue: value).rawValue
+        }
+
+        return draft
     }
 
     static var adapterState: AdapterConnectionState {

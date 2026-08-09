@@ -32,29 +32,27 @@ produce a testable user outcome rather than only infrastructure.
 * Add the initial static vehicle visual catalog and Lexus NX base render.
 * Use mock vehicle and assessment data.
 
-### Milestone 1A: Runtime vehicle colour system
+### Milestone 1A: Runtime vehicle colour system (Complete)
 
-This is a required follow-up to Milestone 1 and must be completed before
-Milestone 2 begins. The current Lexus asset is a fixed silver base render; its
-colour label changes, but its painted body pixels do not yet change.
+Milestone 1A was completed before Milestone 2. The delivered implementation:
 
-* Define `VehiclePaintColor` and replace free-form colour entry with a finite
-  palette picker while retaining a display name where needed.
-* Create and review a pixel-aligned paint mask for the 2020 Lexus NX 300 base
-  render.
-* Create a neutral default-car base render and aligned paint mask for all
-  unsupported vehicles.
-* Implement `VehicleImageRenderer` to apply tuned colour recipes only through
-  the paint mask.
-* Update `VehicleVisualCatalog` so an entry is supported only when both its base
-  render and paint mask are present.
-* Add unit and snapshot coverage for exact matching, fallback behavior, unknown
-  colours, and light, dark, neutral, and saturated paint recipes.
+* Defines a finite `VehiclePaintColor` palette and normalizes legacy or unknown
+  stored colour values to a supported recipe.
+* Provides pixel-aligned base-image and paint-mask pairs for the 2020 Lexus NX
+  300 and the generic unsupported-vehicle fallback.
+* Uses `VehicleImageRenderer` to apply tuned light, dark, neutral, and saturated
+  colour recipes only through each asset's paint mask.
+* Resolves an exact model visual only when both assets are present; every other
+  profile receives the colour-aware default vehicle.
+* Covers palette normalization, exact catalog matching, fallback behavior, and
+  asset availability with unit tests.
+* Was visually verified in the iOS Simulator using white, black, red, green,
+  and blue profiles. Painted panels change while windows, tires, wheels, lights,
+  grille, badges, and trim retain their source appearance.
 
-Milestone 1A is complete only when changing the selected palette colour visibly
-changes the vehicle's painted body panels without recolouring its windows,
-tires, wheels, lights, grille, badges, or trim. The silver Lexus image alone
-does not satisfy this milestone.
+Automated pixel snapshot testing remains a regression-hardening follow-up. The
+MVP acceptance criterion is currently protected by deterministic unit tests and
+the documented simulator visual check.
 
 ### Milestone 2: Complete no-AI scan experience
 

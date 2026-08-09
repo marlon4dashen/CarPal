@@ -3,8 +3,12 @@ import SwiftUI
 struct VehicleHeroView: View {
     let vehicle: VehicleDraft
 
-    private var artwork: VehicleArtwork? {
-        VehicleArtworkCatalog.artwork(for: vehicle)
+    private var visualAsset: VehicleVisualAsset {
+        VehicleVisualCatalog.asset(for: vehicle)
+    }
+
+    private var paintColor: VehiclePaintColor {
+        VehiclePaintColor(profileValue: vehicle.colour)
     }
 
     var body: some View {
@@ -28,7 +32,7 @@ struct VehicleHeroView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: CarPalSpacing.medium) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(artwork == nil ? "VEHICLE PROFILE" : "CURATED MODEL PREVIEW")
+                Text(visualAsset.isModelMatched ? "CURATED MODEL PREVIEW" : "VEHICLE PROFILE")
                     .font(.carPalEyebrow)
                     .foregroundStyle(.white.opacity(0.68))
 
@@ -47,9 +51,17 @@ struct VehicleHeroView: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: artwork == nil ? "car.side.fill" : "checkmark.seal.fill")
+            Image(
+                systemName: visualAsset.isModelMatched
+                    ? "checkmark.seal.fill"
+                    : "car.side.fill"
+            )
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(artwork == nil ? .white.opacity(0.62) : CarPalColor.accent)
+                .foregroundStyle(
+                    visualAsset.isModelMatched
+                        ? CarPalColor.accent
+                        : .white.opacity(0.62)
+                )
                 .accessibilityHidden(true)
         }
     }
@@ -63,35 +75,12 @@ struct VehicleHeroView: View {
                 .blur(radius: 10)
                 .offset(y: -4)
 
-            if let artwork {
-                Image(artwork.assetName)
-                    .resizable()
-                    .scaledToFit()
-                    .accessibilityLabel(artwork.description)
-                    .padding(.horizontal, -10)
-                    .padding(.bottom, 4)
-            } else {
-                genericFallback
-            }
+            VehicleImageRenderer(asset: visualAsset, paintColor: paintColor)
+                .padding(.horizontal, -10)
+                .padding(.bottom, 4)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 205)
-    }
-
-    private var genericFallback: some View {
-        VStack(spacing: CarPalSpacing.small) {
-            Image(systemName: "car.side.fill")
-                .font(.system(size: 94, weight: .regular))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(vehicleBodyColor, .black.opacity(0.44))
-
-            Text("Model artwork is not available yet")
-                .font(.carPalEyebrow)
-                .foregroundStyle(.white.opacity(0.68))
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Model artwork is not available for (vehicleDescription)")
-        .padding(.bottom, CarPalSpacing.medium)
     }
 
     private var footer: some View {
@@ -103,8 +92,10 @@ struct VehicleHeroView: View {
 
             Spacer(minLength: CarPalSpacing.small)
 
-            if artwork != nil {
+            if visualAsset.isModelMatched {
                 Label("Model matched", systemImage: "sparkles")
+            } else {
+                Text("Default preview")
             }
         }
         .font(.carPalEyebrow)
@@ -142,23 +133,4 @@ struct VehicleHeroView: View {
             .joined(separator: " ")
     }
 
-    private var vehicleBodyColor: Color {
-        let colour = vehicle.colour.lowercased()
-
-        if colour.contains("silver") || colour.contains("gray") || colour.contains("grey") {
-            return Color(red: 0.68, green: 0.71, blue: 0.72)
-        } else if colour.contains("black") {
-            return Color(red: 0.14, green: 0.14, blue: 0.13)
-        } else if colour.contains("white") {
-            return Color(red: 0.91, green: 0.91, blue: 0.88)
-        } else if colour.contains("blue") {
-            return Color(red: 0.14, green: 0.34, blue: 0.58)
-        } else if colour.contains("green") {
-            return Color(red: 0.16, green: 0.42, blue: 0.30)
-        } else if colour.contains("red") {
-            return Color(red: 0.76, green: 0.17, blue: 0.09)
-        } else {
-            return CarPalColor.accent
-        }
-    }
 }

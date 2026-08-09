@@ -1,12 +1,15 @@
 import Testing
+import UIKit
 @testable import CarPal
 
 struct VehicleArtworkCatalogTests {
     @Test
-    func resolvesTheCuratedLexusNXAsset() {
-        let artwork = VehicleArtworkCatalog.artwork(for: .lexusNXPreview)
+    func resolvesTheCuratedLexusNXAssetPair() {
+        let asset = VehicleVisualCatalog.asset(for: .lexusNXPreview)
 
-        #expect(artwork?.assetName == "LexusNX2020")
+        #expect(asset.baseAssetName == "LexusNX2020")
+        #expect(asset.paintMaskAssetName == "LexusNX2020PaintMask")
+        #expect(asset.isModelMatched)
     }
 
     @Test
@@ -15,11 +18,11 @@ struct VehicleArtworkCatalogTests {
         vehicle.make = "  LEXUS "
         vehicle.model = "NX   300"
 
-        #expect(VehicleArtworkCatalog.artwork(for: vehicle) != nil)
+        #expect(VehicleVisualCatalog.asset(for: vehicle).isModelMatched)
     }
 
     @Test
-    func unsupportedVehicleDoesNotClaimModelArtwork() {
+    func unsupportedVehicleUsesCompleteDefaultAssetPair() {
         let vehicle = VehicleDraft(
             nickname: "My BMW",
             make: "BMW",
@@ -27,7 +30,11 @@ struct VehicleArtworkCatalogTests {
             modelYear: "2021"
         )
 
-        #expect(VehicleArtworkCatalog.artwork(for: vehicle) == nil)
+        let asset = VehicleVisualCatalog.asset(for: vehicle)
+
+        #expect(asset.baseAssetName == "DefaultVehicle")
+        #expect(asset.paintMaskAssetName == "DefaultVehiclePaintMask")
+        #expect(!asset.isModelMatched)
     }
 
     @Test
@@ -35,6 +42,20 @@ struct VehicleArtworkCatalogTests {
         var vehicle = VehicleDraft.lexusNXPreview
         vehicle.modelYear = "2021"
 
-        #expect(VehicleArtworkCatalog.artwork(for: vehicle) == nil)
+        #expect(!VehicleVisualCatalog.asset(for: vehicle).isModelMatched)
+    }
+
+    @MainActor
+    @Test
+    func everyResolvedAssetNameExistsInTheAppBundle() {
+        let exact = VehicleVisualCatalog.asset(for: .lexusNXPreview)
+        var unsupported = VehicleDraft.lexusNXPreview
+        unsupported.modelYear = "2021"
+        let fallback = VehicleVisualCatalog.asset(for: unsupported)
+
+        for asset in [exact, fallback] {
+            #expect(UIImage(named: asset.baseAssetName) != nil)
+            #expect(UIImage(named: asset.paintMaskAssetName) != nil)
+        }
     }
 }

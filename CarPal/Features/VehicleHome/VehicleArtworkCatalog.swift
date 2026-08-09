@@ -1,25 +1,33 @@
 import Foundation
 
-nonisolated struct VehicleArtwork: Equatable, Sendable {
-    let assetName: String
+nonisolated struct VehicleVisualAsset: Equatable, Sendable {
+    let baseAssetName: String
+    let paintMaskAssetName: String
     let description: String
+    let isModelMatched: Bool
 }
 
-nonisolated enum VehicleArtworkCatalog {
-    static func artwork(for vehicle: VehicleDraft) -> VehicleArtwork? {
+nonisolated enum VehicleVisualCatalog {
+    static func asset(for vehicle: VehicleDraft) -> VehicleVisualAsset {
         let make = normalized(vehicle.make)
         let model = normalized(vehicle.model)
 
-        guard make == "lexus",
-              vehicle.modelYear == "2020",
-              model == "nx" || model.hasPrefix("nx ")
-        else {
-            return nil
+        if make == "lexus",
+           vehicle.modelYear == "2020",
+           model == "nx" || model.hasPrefix("nx ") {
+            return VehicleVisualAsset(
+                baseAssetName: "LexusNX2020",
+                paintMaskAssetName: "LexusNX2020PaintMask",
+                description: "2020 Lexus NX model preview",
+                isModelMatched: true
+            )
         }
 
-        return VehicleArtwork(
-            assetName: "LexusNX2020",
-            description: "2020 Lexus NX model preview"
+        return VehicleVisualAsset(
+            baseAssetName: "DefaultVehicle",
+            paintMaskAssetName: "DefaultVehiclePaintMask",
+            description: "Generic vehicle preview for unsupported model",
+            isModelMatched: false
         )
     }
 

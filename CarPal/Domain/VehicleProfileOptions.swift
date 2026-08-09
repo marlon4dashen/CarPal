@@ -3,9 +3,7 @@ import Foundation
 nonisolated enum VehicleProfileOptions {
     static let makes = ["Lexus", "BMW"]
 
-    static let colours = [
-        "White", "Black", "Silver", "Gray", "Red", "Blue", "Green"
-    ]
+    static let colours = VehiclePaintColor.allCases.map(\.rawValue)
 
     static let fuelTypes = [
         "Gasoline", "Diesel", "Hybrid", "Plug-in Hybrid", "Electric", "Other"
