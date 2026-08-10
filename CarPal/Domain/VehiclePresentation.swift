@@ -1,6 +1,7 @@
 import Foundation
 
 enum AdapterConnectionState: Equatable, Sendable {
+    case notChecked
     case disconnected
     case searching
     case connected(name: String)

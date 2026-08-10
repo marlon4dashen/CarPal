@@ -4,6 +4,7 @@ struct VehicleHomeView: View {
     let vehicle: VehicleDraft
     let adapterState: AdapterConnectionState
     let assessment: AssessmentPreview?
+    let onCheckAdapter: () -> Void
     let onScan: () -> Void
     let onEdit: () -> Void
     let onHistory: () -> Void
@@ -105,10 +106,22 @@ struct VehicleHomeView: View {
                         .font(.carPalBody)
                         .foregroundStyle(CarPalColor.secondaryInk)
                 }
+
+                Spacer(minLength: CarPalSpacing.small)
+
+                if adapterState == .searching {
+                    ProgressView()
+                        .tint(CarPalColor.warning)
+                        .accessibilityLabel("Checking adapter connection")
+                } else if let actionTitle = adapter.actionTitle {
+                    Button(actionTitle, action: onCheckAdapter)
+                        .font(.carPalBody.weight(.bold))
+                        .foregroundStyle(CarPalColor.accent)
+                        .buttonStyle(.plain)
+                }
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(adapter.title). \(adapter.detail)")
+        .accessibilityElement(children: .contain)
     }
 
     private var assessmentCard: some View {
@@ -185,6 +198,7 @@ struct VehicleHomeView: View {
                 Label(scanButtonTitle, systemImage: "waveform.path.ecg.rectangle")
             }
             .buttonStyle(CarPalPrimaryButtonStyle())
+            .disabled(adapterState == .searching)
             .accessibilityHint("Starts the guided vehicle scan")
 
             Button(action: onHistory) {
@@ -291,6 +305,7 @@ struct VehicleHomeView_Previews: PreviewProvider {
                 vehicle: .lexusNXPreview,
                 adapterState: adapterState,
                 assessment: assessment,
+                onCheckAdapter: {},
                 onScan: {},
                 onEdit: {},
                 onHistory: {},

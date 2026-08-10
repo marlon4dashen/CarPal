@@ -4,6 +4,23 @@ import Testing
 
 struct VehicleHomePresentationTests {
     @Test
+    func uncheckedAdapterOffersAnExplicitConnectionCheck() {
+        let presentation = AdapterStatusPresentation(state: .notChecked)
+
+        #expect(presentation.title == "Adapter not checked")
+        #expect(presentation.actionTitle == "Check")
+        #expect(presentation.tone == .neutral)
+    }
+
+    @Test
+    func failedCheckIsDifferentFromNeverChecked() {
+        let presentation = AdapterStatusPresentation(state: .disconnected)
+
+        #expect(presentation.title == "Adapter not found")
+        #expect(presentation.actionTitle == "Try again")
+    }
+
+    @Test
     func connectedAdapterIncludesItsNameAndPositiveTone() {
         let presentation = AdapterStatusPresentation(
             state: .connected(name: "Veepeak OBDCheck BLE")

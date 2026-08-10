@@ -5,12 +5,13 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var store: VehicleProfileStore?
+    @State private var historyStore: ScanHistoryStore?
     @State private var loadError: String?
 
     var body: some View {
         Group {
-            if let store {
-                VehicleAppFlow(store: store)
+            if let store, let historyStore {
+                VehicleAppFlow(store: store, historyStore: historyStore)
             } else if let loadError {
                 ContentUnavailableView(
                     "Vehicle data unavailable",
@@ -32,6 +33,7 @@ struct ContentView: View {
         }
 
         let store = VehicleProfileStore(modelContext: modelContext)
+        let historyStore = ScanHistoryStore(modelContext: modelContext)
 
         do {
             try store.load()
@@ -45,7 +47,11 @@ struct ContentView: View {
                 }
             }
 #endif
+            if let vehicle = store.vehicle {
+                try historyStore.load(vehicleID: vehicle.id)
+            }
             self.store = store
+            self.historyStore = historyStore
         } catch {
             loadError = "CarPal could not load the saved vehicle. \(error.localizedDescription)"
         }
@@ -54,36 +60,47 @@ struct ContentView: View {
 
 private struct VehicleAppFlow: View {
     @Bindable var store: VehicleProfileStore
+    @Bindable var historyStore: ScanHistoryStore
 
     @State private var setupDraft = VehicleDraft()
     @State private var showsSetupValidationErrors = false
+    @State private var path: [VehicleAppRoute] = DebugLaunchConfiguration.startsMockScan
+        ? [.scan]
+        : []
     @State private var presentedDestination: PlaceholderDestination?
     @State private var showsEditVehicle = false
     @State private var persistenceError: String?
+    @State private var liveAdapter = CoreBluetoothOBDClient()
 
     private let validator = VehicleDraftValidator()
 
     var body: some View {
-        NavigationStack {
-            if let vehicle = store.vehicle {
-                VehicleHomeView(
-                    vehicle: vehicle.draft,
-                    adapterState: DebugLaunchConfiguration.adapterState,
-                    assessment: DebugLaunchConfiguration.assessment,
-                    onScan: { presentedDestination = .scan },
-                    onEdit: { showsEditVehicle = true },
-                    onHistory: { presentedDestination = .history },
-                    onSettings: { presentedDestination = .settings }
-                )
-            } else {
-                VehicleSetupView(
-                    draft: $setupDraft,
-                    fieldErrors: showsSetupValidationErrors
-                        ? formErrors(for: setupDraft)
-                        : .init(),
-                    canSubmit: true,
-                    onSave: createVehicle
-                )
+        NavigationStack(path: $path) {
+            Group {
+                if let vehicle = store.vehicle {
+                    VehicleHomeView(
+                        vehicle: vehicle.draft,
+                        adapterState: adapterState,
+                        assessment: latestAssessment,
+                        onCheckAdapter: checkAdapterConnection,
+                        onScan: { path.append(.scan) },
+                        onEdit: { showsEditVehicle = true },
+                        onHistory: { path.append(.history) },
+                        onSettings: { presentedDestination = .settings }
+                    )
+                } else {
+                    VehicleSetupView(
+                        draft: $setupDraft,
+                        fieldErrors: showsSetupValidationErrors
+                            ? formErrors(for: setupDraft)
+                            : .init(),
+                        canSubmit: true,
+                        onSave: createVehicle
+                    )
+                }
+            }
+            .navigationDestination(for: VehicleAppRoute.self) { route in
+                destination(for: route)
             }
         }
         .sheet(isPresented: $showsEditVehicle) {
@@ -111,6 +128,85 @@ private struct VehicleAppFlow: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(persistenceError ?? "An unknown persistence error occurred.")
+        }
+    }
+
+    @ViewBuilder
+    private func destination(for route: VehicleAppRoute) -> some View {
+        switch route {
+        case .scan:
+            if let vehicle = store.vehicle {
+                ScanProcessView(vehicleID: vehicle.id, coordinator: scanCoordinator) { result in
+                    try historyStore.save(result)
+                    path.append(.result(result.id))
+                }
+            } else {
+                ContentUnavailableView("Vehicle unavailable", systemImage: "car.fill")
+            }
+        case let .result(id):
+            if let result = historyStore.result(id: id) {
+                ScanResultView(
+                    result: result,
+                    onPrimaryAction: { handlePrimaryAction(for: result) },
+                    onHome: { path.removeAll() }
+                )
+            } else {
+                ContentUnavailableView(
+                    "Scan result unavailable",
+                    systemImage: "exclamationmark.triangle"
+                )
+            }
+        case .history:
+            ScanHistoryView(results: historyStore.results) { id in
+                path.append(.result(id))
+            }
+        }
+    }
+
+    private var adapterState: AdapterConnectionState {
+        DebugLaunchConfiguration.usesMockAdapter
+            ? .connected(name: "Veepeak OBDCheck BLE (Mock)")
+            : liveAdapter.connectionState
+    }
+
+    private var scanCoordinator: ScanCoordinator {
+        if DebugLaunchConfiguration.usesMockAdapter {
+            return ScanCoordinator(scenario: .serviceSoon)
+        }
+        return ScanCoordinator(adapterClient: liveAdapter, obdClient: liveAdapter)
+    }
+
+    private func checkAdapterConnection() {
+        guard liveAdapter.connectionState != .searching else { return }
+        Task {
+            do {
+                try await liveAdapter.prepareConnection()
+            } catch is CancellationError {
+                // A scan can take ownership of discovery without showing a stale failure.
+            } catch {
+                // The observable adapter state already presents the actionable failure.
+            }
+        }
+    }
+
+    private var latestAssessment: AssessmentPreview? {
+        if let latest = historyStore.results.first {
+            return AssessmentPreview(
+                status: latest.status,
+                score: latest.score,
+                completeness: latest.completeness,
+                scannedAt: latest.scannedAt,
+                nextAction: latest.action.title
+            )
+        }
+        return DebugLaunchConfiguration.assessment
+    }
+
+    private func handlePrimaryAction(for result: ScanResult) {
+        if result.action == .scanAgain {
+            path = [.scan]
+        } else {
+            path.removeAll()
         }
     }
 
@@ -211,6 +307,14 @@ private enum DebugLaunchConfiguration {
         arguments.contains("-resetPreviewVehicle")
     }
 
+    static var startsMockScan: Bool {
+        arguments.contains("-startMockScan")
+    }
+
+    static var usesMockAdapter: Bool {
+        startsMockScan || arguments.contains("-useMockAdapter")
+    }
+
     static var previewDraft: VehicleDraft {
         var draft = arguments.contains("-previewRX2023")
             ? VehicleDraft(
@@ -241,34 +345,23 @@ private enum DebugLaunchConfiguration {
         return draft
     }
 
-    static var adapterState: AdapterConnectionState {
-        seedsPreviewVehicle
-            ? .connected(name: "Veepeak OBDCheck BLE")
-            : .disconnected
-    }
-
     static var assessment: AssessmentPreview? {
         seedsPreviewVehicle ? .sample : nil
     }
 #else
-    static let adapterState = AdapterConnectionState.disconnected
+    static let startsMockScan = false
+    static let usesMockAdapter = false
     static let assessment: AssessmentPreview? = nil
 #endif
 }
 
 private enum PlaceholderDestination: String, Identifiable {
-    case scan
-    case history
     case settings
 
     var id: Self { self }
 
     var title: String {
         switch self {
-        case .scan:
-            "Vehicle scanning"
-        case .history:
-            "Scan history"
         case .settings:
             "Settings"
         }
@@ -276,14 +369,16 @@ private enum PlaceholderDestination: String, Identifiable {
 
     var message: String {
         switch self {
-        case .scan:
-            "The guided adapter scan arrives in Milestone 2."
-        case .history:
-            "Saved scan history arrives in Milestone 2."
         case .settings:
             "App and developer settings arrive in a later milestone."
         }
     }
+}
+
+private enum VehicleAppRoute: Hashable {
+    case scan
+    case result(UUID)
+    case history
 }
 
 private extension VehicleDraftValidator.Field {

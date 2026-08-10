@@ -7,6 +7,6 @@ struct CarPalApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: VehicleProfileEntity.self)
+        .modelContainer(for: [VehicleProfileEntity.self, ScanHistoryEntity.self])
     }
 }

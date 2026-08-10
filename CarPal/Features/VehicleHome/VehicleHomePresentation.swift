@@ -12,24 +12,34 @@ struct AdapterStatusPresentation: Equatable, Sendable {
     let detail: String
     let systemImage: String
     let tone: VehicleHomeTone
+    let actionTitle: String?
 
     init(state: AdapterConnectionState) {
         switch state {
-        case .disconnected:
-            title = "Adapter disconnected"
-            detail = "Connect before starting a scan"
+        case .notChecked:
+            title = "Adapter not checked"
+            detail = "Check the Veepeak connection before scanning"
             systemImage = "bolt.horizontal.circle"
             tone = .neutral
+            actionTitle = "Check"
+        case .disconnected:
+            title = "Adapter not found"
+            detail = "Confirm it is plugged in and nearby"
+            systemImage = "bolt.horizontal.circle"
+            tone = .neutral
+            actionTitle = "Try again"
         case .searching:
             title = "Finding adapter"
             detail = "Looking for Veepeak OBDCheck BLE"
             systemImage = "antenna.radiowaves.left.and.right"
             tone = .caution
+            actionTitle = nil
         case let .connected(name):
             title = "Adapter connected"
             detail = name
             systemImage = "checkmark.circle.fill"
             tone = .positive
+            actionTitle = nil
         }
     }
 }

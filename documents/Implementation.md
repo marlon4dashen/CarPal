@@ -58,7 +58,7 @@ Automated pixel snapshot testing remains a regression-hardening follow-up. The
 MVP acceptance criterion is currently protected by deterministic unit tests and
 the documented simulator visual check.
 
-### Milestone 2: Complete no-AI scan experience
+### Milestone 2: Complete no-AI scan experience (Complete)
 
 * Define the adapter and OBD command protocols.
 * Implement a scripted mock adapter.
@@ -69,13 +69,45 @@ the documented simulator visual check.
 This is the first meaningful end-to-end demo. It must work without Bluetooth
 hardware, a backend, or AI.
 
-### Milestone 3: Real adapter integration
+The delivered implementation:
 
-* Implement CoreBluetooth discovery and connection for Veepeak OBDCheck BLE.
-* Initialize the ELM327-compatible command session.
-* Discover supported PIDs and retrieve the fixed core dataset.
-* Normalize responses and map transport failures to typed domain errors.
-* Validate repeated scans on the 2020 Lexus NX 300.
+* Separates Bluetooth discovery/connection and OBD command execution behind
+  injectable protocols used by both the scripted test client and CoreBluetooth client.
+* Provides paced scripted scenarios for a scoreable diagnostic finding,
+  healthy core data, insufficient core data, and a connection interruption.
+* Runs the seven visible stages through `ScanCoordinator`, with one active
+  stage, stable diagnostic failure codes, retry guidance, cancellation, and a
+  non-blocking optional-data limitation.
+* Normalizes the fixed mock dataset and applies a deterministic minimum-data
+  gate before any score is allowed.
+* Produces conservative `Good`, `Service soon`, `Urgent warning`, or
+  `Unable to assess` results without backend or AI availability.
+* Persists complete result snapshots in SwiftData so historical status, score,
+  findings, explanation, action, completeness, and technical context remain
+  available offline without recomputation.
+* Implements Scan Process, Scan Result, and Scan History and updates Vehicle
+  Home from the latest stored result.
+* Covers the assessment gate, healthy and DTC rules, seven-stage success,
+  typed connection failure, insufficient-data outcome, and history persistence
+  with deterministic tests.
+
+The mock remains available only through explicit debug launch arguments. Production
+composition now uses the real adapter client described in Milestone 3. Backend
+explanation, user-selectable debug scenarios, and production settings remain later work.
+
+### Milestone 3: Real adapter integration (Implementation complete; hardware validation pending)
+
+* Implemented CoreBluetooth power-state handling, advertisement discovery by supported
+  Veepeak product name, connection, dynamic GATT serial-characteristic discovery, and
+  notification subscription. The adapter is not shown as connected before this completes.
+* Implemented ELM327 reset/configuration and automatic vehicle-protocol selection.
+* Implemented Mode 01 PID capability discovery and fixed core sensor retrieval, plus
+  Mode 03 DTC parsing and best-effort freeze-frame detection.
+* Implemented prompt-delimited command buffering, command timeouts, response cleanup,
+  standard PID conversion, and stage-specific transport error mapping.
+* Retained the scripted adapter solely for deterministic tests and explicit debug runs.
+* Pending: validate repeated scans and discovered GATT characteristics using the physical
+  Veepeak OBDCheck BLE and 2020 Lexus NX 300.
 
 ### Milestone 4: Thin backend and explanation
 
@@ -491,7 +523,10 @@ user should do next.
 * Static front three-quarter vehicle hero matched to the supported model and
   selected body colour
 * Vehicle nickname, year, make, model, trim, colour, and mileage
-* Adapter connection status
+* Actionable adapter preflight with distinct `Not checked`, `Finding adapter`,
+  `Adapter not found`, and `Adapter connected` states
+* `Check`/`Try again` action that performs real BLE discovery and prepares a
+  reusable connection before the scan
 * Latest assessment status and score when eligible
 * Last scan time
 * Recommended next action
