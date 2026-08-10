@@ -10,13 +10,7 @@ struct VehicleImageRenderer: View {
                 .resizable()
                 .scaledToFit()
 
-            paintLayer
-                .mask {
-                    Image(asset.paintMaskAssetName)
-                        .resizable()
-                        .scaledToFit()
-                        .luminanceToAlpha()
-                }
+            maskedPaintLayer
         }
         .compositingGroup()
         .accessibilityElement(children: .ignore)
@@ -27,6 +21,27 @@ struct VehicleImageRenderer: View {
         recipe.color
             .opacity(recipe.opacity)
             .blendMode(recipe.blendMode)
+    }
+
+    @ViewBuilder
+    private var maskedPaintLayer: some View {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-showPaintMaskOverlay") {
+            Color(red: 1, green: 0, blue: 1).opacity(0.9)
+                .mask { paintMask }
+        } else {
+            paintLayer.mask { paintMask }
+        }
+#else
+        paintLayer.mask { paintMask }
+#endif
+    }
+
+    private var paintMask: some View {
+        Image(asset.paintMaskAssetName)
+            .resizable()
+            .scaledToFit()
+            .luminanceToAlpha()
     }
 
     private var recipe: PaintRecipe {

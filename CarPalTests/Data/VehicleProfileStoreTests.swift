@@ -60,6 +60,31 @@ struct VehicleProfileStoreTests {
         #expect(try context.fetchCount(FetchDescriptor<VehicleProfileEntity>()) == 1)
     }
 
+    @Test
+    func loadDeletesLegacyUnsupportedVehicle() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        context.insert(VehicleProfileEntity(draft: VehicleDraft(
+            nickname: "Legacy vehicle",
+            make: "BMW",
+            model: "330i",
+            modelYear: "2021",
+            variant: "330i xDrive",
+            vinOrPlate: "LEGACY",
+            mileage: "1000",
+            trim: "xDrive",
+            colour: "Blue",
+            fuelType: "Gasoline"
+        )))
+        try context.save()
+
+        let store = VehicleProfileStore(modelContext: context)
+        try store.load()
+
+        #expect(store.vehicle == nil)
+        #expect(try context.fetchCount(FetchDescriptor<VehicleProfileEntity>()) == 0)
+    }
+
     private func makeContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         return try ModelContainer(

@@ -5,6 +5,7 @@ enum VehicleFormField: String, CaseIterable, Hashable, Sendable {
     case make
     case model
     case modelYear
+    case variant
     case vinOrPlate
     case mileage
     case trim
@@ -21,6 +22,8 @@ enum VehicleFormField: String, CaseIterable, Hashable, Sendable {
             "Vehicle model"
         case .modelYear:
             "Vehicle model year"
+        case .variant:
+            "Vehicle variant"
         case .vinOrPlate:
             "VIN or licence plate"
         case .mileage:

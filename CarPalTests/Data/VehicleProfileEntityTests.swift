@@ -26,14 +26,15 @@ struct VehicleProfileEntityTests {
             createdAt: createdAt
         )
         let replacement = VehicleDraft(
-            nickname: "Daily Driver",
-            make: "BMW",
-            model: "330i",
-            modelYear: "2021",
+            nickname: "Family RX",
+            make: "Lexus",
+            model: "RX",
+            modelYear: "2023",
+            variant: "RX 350",
             vinOrPlate: "NEWPLATE",
             mileage: "32000",
-            trim: "xDrive",
-            colour: "Blue",
+            trim: "Premium",
+            colour: "Nori Green Pearl",
             fuelType: "Gasoline"
         )
 

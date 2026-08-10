@@ -5,7 +5,8 @@ struct VehicleFormView: View {
     private let fieldErrors: VehicleFormFieldErrors
 
     @FocusState private var focusedField: VehicleFormField?
-    @State private var showsOptionalDetails: Bool
+
+    private let catalog = LexusVehicleCatalogRepository.shared
 
     init(
         draft: Binding<VehicleDraft>,
@@ -14,12 +15,6 @@ struct VehicleFormView: View {
         _draft = draft
         self.fieldErrors = fieldErrors
 
-        let value = draft.wrappedValue
-        _showsOptionalDetails = State(
-            initialValue: !value.trim.isEmpty
-                || !value.colour.isEmpty
-                || !value.fuelType.isEmpty
-        )
     }
 
     var body: some View {
@@ -27,7 +22,6 @@ struct VehicleFormView: View {
             VStack(spacing: 18) {
                 introduction
                 requiredDetails
-                optionalDetails
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -35,8 +29,32 @@ struct VehicleFormView: View {
         }
         .background(background)
         .scrollDismissesKeyboard(.interactively)
+        .onAppear {
+            if draft.make.isEmpty {
+                draft.make = catalog.makeName
+            }
+        }
+        .onChange(of: draft.model) { _, _ in
+            draft.modelYear = ""
+            clearVariantDetails()
+        }
+        .onChange(of: draft.modelYear) { _, _ in
+            clearVariantDetails()
+        }
+        .onChange(of: draft.variant) { _, _ in
+            draft.trim = ""
+            draft.colour = ""
+            draft.fuelType = catalog.fuelType(for: draft) ?? ""
+        }
+        .onChange(of: draft.trim) { _, _ in
+            draft.colour = ""
+        }
         .onChange(of: draft.make) { _, newMake in
-            guard VehicleProfileOptions.canonicalModel(draft.model, for: newMake) == nil else {
+            guard newMake == catalog.makeName else {
+                draft.make = catalog.makeName
+                return
+            }
+            guard draft.model.isEmpty || catalog.canonicalSeries(draft.model) == nil else {
                 return
             }
             draft.model = ""
@@ -92,30 +110,66 @@ struct VehicleFormView: View {
             pickerField(
                 "Make",
                 selection: makeSelection,
-                options: VehicleProfileOptions.makes,
+                options: [catalog.makeName],
                 prompt: "Select make",
                 field: .make,
-                helpText: "CarPal currently supports Lexus and BMW profiles."
+                helpText: "CarPal MVP supports Canadian Lexus vehicles."
             )
 
             pickerField(
-                "Model",
+                "Series",
                 selection: modelSelection,
-                options: VehicleProfileOptions.models(for: draft.make),
-                prompt: draft.make.isEmpty ? "Select a make first" : "Select model",
+                options: catalog.seriesNames,
+                prompt: "Select NX or RX",
                 field: .model,
                 isDisabled: draft.make.isEmpty,
-                helpText: draft.make.isEmpty
-                    ? "Choose a make to see its supported models."
-                    : "Only supported \(draft.make) models are shown."
+                helpText: "Choose the Lexus model series."
             )
 
-            vehicleField(
+            pickerField(
                 "Model year",
-                placeholder: "2020",
-                text: $draft.modelYear,
+                selection: $draft.modelYear,
+                options: catalog.years(forSeries: draft.model),
+                prompt: draft.model.isEmpty ? "Select a series first" : "Select model year",
                 field: .modelYear,
-                keyboardType: .numberPad
+                isDisabled: draft.model.isEmpty
+            )
+
+            pickerField(
+                "Variant",
+                selection: $draft.variant,
+                options: catalog.variants(forSeries: draft.model, year: draft.modelYear),
+                prompt: draft.modelYear.isEmpty ? "Select a model year first" : "Select variant",
+                field: .variant,
+                isDisabled: draft.modelYear.isEmpty,
+                helpText: "Variant determines the vehicle powertrain."
+            )
+
+            pickerField(
+                "Trim",
+                selection: $draft.trim,
+                options: catalog.trims(for: draft),
+                prompt: draft.variant.isEmpty ? "Select a variant first" : "Select trim",
+                field: .trim,
+                isDisabled: draft.variant.isEmpty
+            )
+
+            pickerField(
+                "Exterior colour",
+                selection: $draft.colour,
+                options: catalog.colors(for: draft).map(\.name),
+                prompt: draft.trim.isEmpty ? "Select a trim first" : "Select exterior colour",
+                field: .colour,
+                isDisabled: draft.trim.isEmpty,
+                helpText: "Official Canadian Lexus colour name; preview uses its nearest paint family."
+            )
+
+            readOnlyField(
+                "Fuel type",
+                value: draft.fuelType,
+                placeholder: "Select a variant first",
+                field: .fuelType,
+                helpText: "Derived from the selected Lexus variant."
             )
 
             vehicleField(
@@ -135,53 +189,6 @@ struct VehicleFormView: View {
                 keyboardType: .decimalPad,
                 helpText: "Enter the current odometer reading."
             )
-        }
-    }
-
-    private var optionalDetails: some View {
-        VehicleFormCard(
-            title: "Optional details",
-            subtitle: "Helps personalize your vehicle profile"
-        ) {
-            DisclosureGroup(isExpanded: $showsOptionalDetails) {
-                VStack(spacing: 16) {
-                    vehicleField(
-                        "Trim",
-                        placeholder: "Luxury",
-                        text: $draft.trim,
-                        field: .trim,
-                        capitalization: .words
-                    )
-
-                    pickerField(
-                        "Colour",
-                        selection: colourSelection,
-                        options: VehicleProfileOptions.colours,
-                        prompt: "Select colour",
-                        field: .colour,
-                        helpText: "Used to colour the vehicle preview."
-                    )
-
-                    pickerField(
-                        "Fuel type",
-                        selection: fuelTypeSelection,
-                        options: VehicleProfileOptions.fuelTypes,
-                        prompt: "Select fuel type",
-                        field: .fuelType,
-                        helpText: "Choose Other if the exact type is not listed."
-                    )
-                }
-                .padding(.top, 16)
-            } label: {
-                HStack {
-                    Text(showsOptionalDetails ? "Hide details" : "Add trim, colour, and fuel type")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(CarPalColor.ink)
-                    Spacer()
-                }
-                .contentShape(Rectangle())
-            }
-            .tint(CarPalColor.accent)
         }
     }
 
@@ -239,16 +246,9 @@ struct VehicleFormView: View {
         }
     }
 
-    private var colourSelection: Binding<String> {
-        Binding(
-            get: { VehicleProfileOptions.canonicalColour(for: draft.colour) ?? "" },
-            set: { draft.colour = $0 }
-        )
-    }
-
     private var makeSelection: Binding<String> {
         Binding(
-            get: { VehicleProfileOptions.canonicalMake(for: draft.make) ?? "" },
+            get: { draft.make == catalog.makeName ? draft.make : "" },
             set: { draft.make = $0 }
         )
     }
@@ -256,17 +256,55 @@ struct VehicleFormView: View {
     private var modelSelection: Binding<String> {
         Binding(
             get: {
-                VehicleProfileOptions.canonicalModel(draft.model, for: draft.make) ?? ""
+                catalog.canonicalSeries(draft.model) ?? ""
             },
             set: { draft.model = $0 }
         )
     }
 
-    private var fuelTypeSelection: Binding<String> {
-        Binding(
-            get: { VehicleProfileOptions.canonicalFuelType(for: draft.fuelType) ?? "" },
-            set: { draft.fuelType = $0 }
-        )
+    private func clearVariantDetails() {
+        draft.variant = ""
+        draft.trim = ""
+        draft.colour = ""
+        draft.fuelType = ""
+    }
+
+    private func readOnlyField(
+        _ title: String,
+        value: String,
+        placeholder: String,
+        field: VehicleFormField,
+        helpText: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(CarPalColor.ink)
+
+            Text(value.isEmpty ? placeholder : value)
+                .foregroundStyle(value.isEmpty ? .secondary : CarPalColor.ink)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                .padding(.horizontal, 14)
+                .background(Color.white.opacity(0.46), in: RoundedRectangle(cornerRadius: 13))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 13)
+                        .stroke(
+                            fieldErrors[field] == nil ? CarPalColor.hairline : Color.red.opacity(0.75),
+                            lineWidth: fieldErrors[field] == nil ? 1 : 1.5
+                        )
+                }
+                .accessibilityLabel(field.accessibilityLabel)
+
+            if let error = fieldErrors[field] {
+                Label(error, systemImage: "exclamationmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else {
+                Text(helpText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     @ViewBuilder

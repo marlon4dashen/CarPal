@@ -8,7 +8,7 @@ struct VehicleHeroView: View {
     }
 
     private var paintColor: VehiclePaintColor {
-        VehiclePaintColor(profileValue: vehicle.colour)
+        LexusVehicleCatalogRepository.shared.renderColor(for: vehicle.colour)
     }
 
     var body: some View {
@@ -128,7 +128,7 @@ struct VehicleHeroView: View {
     }
 
     private var vehicleDescription: String {
-        [vehicle.modelYear, vehicle.make, vehicle.model]
+        [vehicle.modelYear, vehicle.make, vehicle.variant]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
     }

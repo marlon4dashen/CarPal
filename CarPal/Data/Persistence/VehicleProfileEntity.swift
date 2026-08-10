@@ -8,6 +8,7 @@ final class VehicleProfileEntity {
     var make: String
     var model: String
     var modelYear: String
+    var variant: String = ""
     var vinOrPlate: String
     var mileage: String
     var trim: String
@@ -27,6 +28,7 @@ final class VehicleProfileEntity {
         make = draft.make
         model = draft.model
         modelYear = draft.modelYear
+        variant = draft.variant
         vinOrPlate = draft.vinOrPlate
         mileage = draft.mileage
         trim = draft.trim
@@ -42,6 +44,7 @@ final class VehicleProfileEntity {
             make: make,
             model: model,
             modelYear: modelYear,
+            variant: variant,
             vinOrPlate: vinOrPlate,
             mileage: mileage,
             trim: trim,
@@ -55,6 +58,7 @@ final class VehicleProfileEntity {
         make = draft.make
         model = draft.model
         modelYear = draft.modelYear
+        variant = draft.variant
         vinOrPlate = draft.vinOrPlate
         mileage = draft.mileage
         trim = draft.trim

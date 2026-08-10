@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 1,
+  "market": "CA",
+  "make": { "id": "lexus", "name": "Lexus" },
+  "series": [
+    { "id": "nx", "name": "NX" },
+    { "id": "rx", "name": "RX" }
+  ],
+  "bodyPhases": [
+    { "id": "nx-2015-2017", "seriesID": "nx", "years": [2015, 2016, 2017], "visualKey": "LexusNX2015" },
+    { "id": "nx-2018-2021", "seriesID": "nx", "years": [2018, 2019, 2020, 2021], "visualKey": "LexusNX2020" },
+    { "id": "nx-2022-2026", "seriesID": "nx", "years": [2022, 2023, 2024, 2025, 2026], "visualKey": "LexusNX2022" },
+    { "id": "rx-2015", "seriesID": "rx", "years": [2015], "visualKey": "LexusRX2015" },
+    { "id": "rx-2016-2019", "seriesID": "rx", "years": [2016, 2017, 2018, 2019], "visualKey": "LexusRX2016" },
+    { "id": "rx-2020-2022", "seriesID": "rx", "years": [2020, 2021, 2022], "visualKey": "LexusRX2020" },
+    { "id": "rx-2023-2026", "seriesID": "rx", "years": [2023, 2024, 2025, 2026], "visualKey": "LexusRX2023" }
+  ],
+  "colors": [
+    { "id": "eminent-white-pearl", "name": "Eminent White Pearl", "paintCode": "085", "renderToken": "white" },
+    { "id": "ultra-white", "name": "Ultra White", "paintCode": "083", "renderToken": "white" },
+    { "id": "atomic-silver", "name": "Atomic Silver", "paintCode": "1J7", "renderToken": "silver" },
+    { "id": "nebula-gray-pearl", "name": "Nebula Gray Pearl", "paintCode": "1H9", "renderToken": "gray" },
+    { "id": "cloudburst-gray", "name": "Cloudburst Gray", "paintCode": "1L1", "renderToken": "gray" },
+    { "id": "starlight-black-mica", "name": "Starlight Black Mica", "paintCode": "217", "renderToken": "black" },
+    { "id": "obsidian", "name": "Obsidian", "paintCode": "212", "renderToken": "black" },
+    { "id": "caviar", "name": "Caviar", "paintCode": "223", "renderToken": "black" },
+    { "id": "matador-red-mica", "name": "Matador Red Mica", "paintCode": "3R1", "renderToken": "red" },
+    { "id": "redline", "name": "Redline", "paintCode": "3T5", "renderToken": "red" },
+    { "id": "fire-agate-pearl", "name": "Fire Agate Pearl", "paintCode": "4V3", "renderToken": "green" },
+    { "id": "nori-green-pearl", "name": "Nori Green Pearl", "paintCode": "6X4", "renderToken": "green" },
+    { "id": "copper-crest", "name": "Copper Crest", "paintCode": "4Y5", "renderToken": "red" },
+    { "id": "ultrasonic-blue-mica", "name": "Ultrasonic Blue Mica", "paintCode": "8U1/8X1", "renderToken": "blue" },
+    { "id": "nightfall-mica", "name": "Nightfall Mica", "paintCode": "8X5", "renderToken": "blue" },
+    { "id": "grecian-water", "name": "Grecian Water", "paintCode": "8Y6", "renderToken": "blue" },
+    { "id": "moonbeam-beige-metallic", "name": "Moonbeam Beige Metallic", "paintCode": "4X2", "renderToken": "silver" }
+  ],
+  "colorSets": [
+    { "id": "legacy-standard", "colorIDs": ["eminent-white-pearl", "atomic-silver", "nebula-gray-pearl", "starlight-black-mica", "obsidian", "matador-red-mica", "fire-agate-pearl"] },
+    { "id": "legacy-fsport", "colorIDs": ["ultra-white", "atomic-silver", "nebula-gray-pearl", "obsidian", "matador-red-mica", "ultrasonic-blue-mica"] },
+    { "id": "mid-standard", "colorIDs": ["eminent-white-pearl", "atomic-silver", "nebula-gray-pearl", "caviar", "matador-red-mica", "nightfall-mica", "moonbeam-beige-metallic"] },
+    { "id": "mid-fsport", "colorIDs": ["ultra-white", "atomic-silver", "nebula-gray-pearl", "caviar", "matador-red-mica", "ultrasonic-blue-mica"] },
+    { "id": "modern-standard", "colorIDs": ["eminent-white-pearl", "atomic-silver", "cloudburst-gray", "caviar", "redline", "nori-green-pearl", "grecian-water", "copper-crest"] },
+    { "id": "modern-fsport", "colorIDs": ["ultra-white", "atomic-silver", "cloudburst-gray", "caviar", "redline", "ultrasonic-blue-mica"] }
+  ],
+  "offerings": [
+    {
+      "seriesID": "nx", "years": [2015, 2016, 2017], "variantID": "nx-200t", "variantName": "NX 200t", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/specifications/2014/2015-lexus-nx-specifications.html",
+      "trims": [
+        { "id": "standard", "name": "Standard", "colorSetID": "legacy-standard" },
+        { "id": "premium", "name": "Premium", "colorSetID": "legacy-standard" },
+        { "id": "luxury", "name": "Luxury", "colorSetID": "legacy-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "legacy-standard" },
+        { "id": "f-sport-1", "name": "F SPORT Series 1", "colorSetID": "legacy-fsport" },
+        { "id": "f-sport-2", "name": "F SPORT Series 2", "colorSetID": "legacy-fsport" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2015, 2016, 2017], "variantID": "nx-300h", "variantName": "NX 300h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/specifications/2014/2015-lexus-nx-specifications.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "legacy-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "legacy-standard" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2018, 2019, 2020, 2021], "variantID": "nx-300", "variantName": "NX 300", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2017/sophisticated-style-meets-uncompromising-luxury-the-refreshed-lexus-nx-300-and-nx-300h-compact-suvs.html",
+      "trims": [
+        { "id": "signature", "name": "Signature", "colorSetID": "mid-standard" },
+        { "id": "premium", "name": "Premium", "colorSetID": "mid-standard" },
+        { "id": "luxury", "name": "Luxury", "colorSetID": "mid-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "mid-standard" },
+        { "id": "f-sport-1", "name": "F SPORT Series 1", "colorSetID": "mid-fsport" },
+        { "id": "f-sport-2", "name": "F SPORT Series 2", "colorSetID": "mid-fsport" },
+        { "id": "f-sport-3", "name": "F SPORT Series 3", "colorSetID": "mid-fsport" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2018, 2019, 2020, 2021], "variantID": "nx-300h", "variantName": "NX 300h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2020/aggressively-sporty-impressively-efficient-an-all-new-fsport-special-edition-hybrid-highlights-the-lineup-of-2021-lexus-nx-series-luxury-compact-crossovers.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "mid-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "mid-standard" },
+        { "id": "f-sport-special", "name": "F SPORT Special Edition", "colorSetID": "mid-fsport", "years": [2021] }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2022, 2023, 2024, 2025], "variantID": "nx-250", "variantName": "NX 250", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2021/make-the-coming-year-merry-and-bright-with-the-all-new-2022-lexus-nx-series-luxury-suv.html",
+      "trims": [{ "id": "signature", "name": "Signature", "colorSetID": "modern-standard" }]
+    },
+    {
+      "seriesID": "nx", "years": [2022, 2023, 2024, 2025], "variantID": "nx-350", "variantName": "NX 350", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2023/whats-new-2024-lexus-nx--250--350--350h--450h.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" },
+        { "id": "ultra-premium", "name": "Ultra Premium", "colorSetID": "modern-standard", "years": [2024, 2025] },
+        { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" },
+        { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" },
+        { "id": "f-sport-1", "name": "F SPORT 1", "colorSetID": "modern-fsport" },
+        { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "modern-fsport" },
+        { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2022, 2023, 2024, 2025], "variantID": "nx-350h", "variantName": "NX 350h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2023/whats-new-2024-lexus-nx--250--350--350h--450h.html",
+      "trims": [
+        { "id": "signature", "name": "Signature", "colorSetID": "modern-standard" },
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" },
+        { "id": "ultra-premium", "name": "Ultra Premium", "colorSetID": "modern-standard", "years": [2024, 2025] },
+        { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" },
+        { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2022, 2023, 2024, 2025], "variantID": "nx-450h-plus", "variantName": "NX 450h+", "fuelType": "Plug-in Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2023/whats-new-2024-lexus-nx--250--350--350h--450h.html",
+      "trims": [
+        { "id": "ultra-premium", "name": "Ultra Premium", "colorSetID": "modern-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" },
+        { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2026], "variantID": "nx-350", "variantName": "NX 350", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2025/what-s-new--2026-lexus-nx-350---350h---450h-.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" }, { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" },
+        { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" },
+        { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "modern-fsport" }, { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2026], "variantID": "nx-350h", "variantName": "NX 350h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2025/what-s-new--2026-lexus-nx-350---350h---450h-.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" }, { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" },
+        { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" },
+        { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "modern-fsport" }, { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "nx", "years": [2026], "variantID": "nx-450h-plus", "variantName": "NX 450h+", "fuelType": "Plug-in Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2025/what-s-new--2026-lexus-nx-350---350h---450h-.html",
+      "trims": [
+        { "id": "ultra-premium", "name": "Ultra Premium", "colorSetID": "modern-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" },
+        { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "modern-fsport" }, { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2015], "variantID": "rx-350", "variantName": "RX 350", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2014/new-sportdesign-highlights-the-excitement-and-confidence-of-the-2015-lexus-rx-350--rx-450h-luxury-crossover-line-up.html",
+      "trims": [{ "id": "sportdesign", "name": "SPORTDESIGN", "colorSetID": "legacy-standard" }, { "id": "f-sport", "name": "F SPORT", "colorSetID": "legacy-fsport" }]
+    },
+    {
+      "seriesID": "rx", "years": [2015], "variantID": "rx-450h", "variantName": "RX 450h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2014/new-sportdesign-highlights-the-excitement-and-confidence-of-the-2015-lexus-rx-350--rx-450h-luxury-crossover-line-up.html",
+      "trims": [{ "id": "sportdesign", "name": "SPORTDESIGN", "colorSetID": "legacy-standard" }]
+    },
+    {
+      "seriesID": "rx", "years": [2016, 2017, 2018, 2019, 2020, 2021, 2022], "variantID": "rx-350", "variantName": "RX 350", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2020/bold-elegant-and-chiseled-to-perfection-the-2021-lexus-rx-series-is-the-mid-size-suv-that-exquisitely-expresses-craftsmanship-and-luxury.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "mid-standard" }, { "id": "luxury", "name": "Luxury", "colorSetID": "mid-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "mid-standard" }, { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "mid-fsport" },
+        { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "mid-fsport" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2016, 2017, 2018, 2019, 2020, 2021, 2022], "variantID": "rx-450h", "variantName": "RX 450h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/specifications/2015/2016-lexus-rx-350--rx-450h-specifications.html",
+      "trims": [
+        { "id": "luxury", "name": "Luxury", "colorSetID": "mid-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "mid-standard" },
+        { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "mid-fsport" }, { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "mid-fsport" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2018, 2019, 2020, 2021, 2022], "variantID": "rx-350l", "variantName": "RX 350L", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2020/bold-elegant-and-chiseled-to-perfection-the-2021-lexus-rx-series-is-the-mid-size-suv-that-exquisitely-expresses-craftsmanship-and-luxury.html",
+      "trims": [{ "id": "premium", "name": "Premium", "colorSetID": "mid-standard" }, { "id": "luxury", "name": "Luxury", "colorSetID": "mid-standard" }]
+    },
+    {
+      "seriesID": "rx", "years": [2018, 2019, 2020, 2021, 2022], "variantID": "rx-450hl", "variantName": "RX 450hL", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2020/bold-elegant-and-chiseled-to-perfection-the-2021-lexus-rx-series-is-the-mid-size-suv-that-exquisitely-expresses-craftsmanship-and-luxury.html",
+      "trims": [{ "id": "luxury", "name": "Luxury", "colorSetID": "mid-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "mid-standard" }]
+    },
+    {
+      "seriesID": "rx", "years": [2023, 2024, 2025], "variantID": "rx-350", "variantName": "RX 350", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2023/what-s-new--2024-lexus-rx-450h---rx-350h--rx-500h--rx-350.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" }, { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" },
+        { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" },
+        { "id": "f-sport-1", "name": "F SPORT 1", "colorSetID": "modern-fsport" }, { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "modern-fsport" },
+        { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2023, 2024, 2025], "variantID": "rx-350h", "variantName": "RX 350h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2023/what-s-new--2024-lexus-rx-450h---rx-350h--rx-500h--rx-350.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" }, { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" },
+        { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2023, 2024, 2025], "variantID": "rx-500h", "variantName": "RX 500h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2022/the-iconic-lexus-evolved-the-all-new-2023-lexus-rx-series.html",
+      "trims": [{ "id": "f-sport-performance-2", "name": "F SPORT Performance 2", "colorSetID": "modern-fsport" }, { "id": "f-sport-performance-3", "name": "F SPORT Performance 3", "colorSetID": "modern-fsport" }]
+    },
+    {
+      "seriesID": "rx", "years": [2024, 2025], "variantID": "rx-450h-plus", "variantName": "RX 450h+", "fuelType": "Plug-in Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2023/what-s-new--2024-lexus-rx-450h---rx-350h--rx-500h--rx-350.html",
+      "trims": [{ "id": "executive", "name": "Executive", "colorSetID": "modern-standard" }]
+    },
+    {
+      "seriesID": "rx", "years": [2026], "variantID": "rx-350", "variantName": "RX 350", "fuelType": "Gasoline",
+      "sourceURL": "https://media.lexus.ca/en/releases/2025/what-s-new--2026-lexus-rx.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" }, { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" },
+        { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" },
+        { "id": "f-sport-2", "name": "F SPORT 2", "colorSetID": "modern-fsport" }, { "id": "f-sport-3", "name": "F SPORT 3", "colorSetID": "modern-fsport" },
+        { "id": "f-sport-black-line", "name": "F SPORT Black Line", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2026], "variantID": "rx-350h", "variantName": "RX 350h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2025/what-s-new--2026-lexus-rx.html",
+      "trims": [
+        { "id": "premium", "name": "Premium", "colorSetID": "modern-standard" }, { "id": "f-sport-design", "name": "F SPORT Design", "colorSetID": "modern-fsport" },
+        { "id": "luxury", "name": "Luxury", "colorSetID": "modern-standard" }, { "id": "ultra-luxury", "name": "Ultra Luxury", "colorSetID": "modern-standard" },
+        { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2026], "variantID": "rx-500h", "variantName": "RX 500h", "fuelType": "Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2025/what-s-new--2026-lexus-rx.html",
+      "trims": [
+        { "id": "f-sport-performance-2", "name": "F SPORT Performance 2", "colorSetID": "modern-fsport" },
+        { "id": "f-sport-performance-3", "name": "F SPORT Performance 3", "colorSetID": "modern-fsport" },
+        { "id": "f-sport-black-line", "name": "F SPORT Black Line", "colorSetID": "modern-fsport" }
+      ]
+    },
+    {
+      "seriesID": "rx", "years": [2026], "variantID": "rx-450h-plus", "variantName": "RX 450h+", "fuelType": "Plug-in Hybrid",
+      "sourceURL": "https://media.lexus.ca/en/releases/2025/what-s-new--2026-lexus-rx.html",
+      "trims": [{ "id": "ultra-premium", "name": "Ultra Premium", "colorSetID": "modern-standard" }, { "id": "executive", "name": "Executive", "colorSetID": "modern-standard" }]
+    }
+  ]
+}

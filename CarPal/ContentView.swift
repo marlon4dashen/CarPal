@@ -212,21 +212,30 @@ private enum DebugLaunchConfiguration {
     }
 
     static var previewDraft: VehicleDraft {
-        var draft = VehicleDraft.lexusNXPreview
-
-        if arguments.contains("-previewFallbackVehicle") {
-            draft.nickname = "My BMW"
-            draft.make = "BMW"
-            draft.model = "330i"
-            draft.modelYear = "2021"
-            draft.trim = "Sport"
-        }
+        var draft = arguments.contains("-previewRX2023")
+            ? VehicleDraft(
+                nickname: "My Lexus RX",
+                make: "Lexus",
+                model: "RX",
+                modelYear: "2023",
+                variant: "RX 350",
+                vinOrPlate: "CARPALRX",
+                mileage: "24000",
+                trim: "Premium",
+                colour: "Nori Green Pearl",
+                fuelType: "Gasoline"
+            )
+            : .lexusNXPreview
 
         if let paintArgument = arguments.first(where: {
             $0.hasPrefix("-previewPaintColor=")
         }) {
             let value = String(paintArgument.dropFirst("-previewPaintColor=".count))
-            draft.colour = VehiclePaintColor(profileValue: value).rawValue
+            let requested = VehiclePaintColor(profileValue: value)
+            let catalog = LexusVehicleCatalogRepository.shared
+            draft.colour = catalog.colors(for: draft).first {
+                catalog.renderColor(for: $0.name) == requested
+            }?.name ?? draft.colour
         }
 
         return draft
@@ -288,10 +297,14 @@ private extension VehicleDraftValidator.Field {
             .model
         case .modelYear:
             .modelYear
+        case .variant:
+            .variant
         case .vinOrPlate:
             .vinOrPlate
         case .mileage:
             .mileage
+        case .trim:
+            .trim
         case .colour:
             .colour
         case .fuelType:

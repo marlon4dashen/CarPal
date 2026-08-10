@@ -2,36 +2,28 @@ import Testing
 @testable import CarPal
 
 struct VehicleDraftValidatorTests {
-    private let validator = VehicleDraftValidator(currentYear: 2026)
+    private let validator = VehicleDraftValidator()
 
     @Test
-    func validDraftHasNoErrors() {
+    func validCatalogDraftHasNoErrors() {
         #expect(validator.validate(.lexusNXPreview).isEmpty)
     }
 
     @Test
-    func requiredFieldsReturnFieldSpecificErrors() {
+    func emptyDraftReturnsEveryRequiredIdentityError() {
         let errors = validator.validate(VehicleDraft())
 
-        #expect(
-            Set(errors.keys) == Set([
-                .nickname,
-                .make,
-                .model,
-                .modelYear,
-                .vinOrPlate,
-                .mileage
-            ])
-        )
-        #expect(errors[.nickname]?.field == .nickname)
+        #expect(Set(errors.keys) == Set([
+            .nickname, .make, .model, .modelYear, .variant, .vinOrPlate,
+            .mileage, .trim, .colour, .fuelType
+        ]))
         #expect(errors[.vinOrPlate]?.message == "VIN or licence plate is required.")
     }
 
-    @Test(arguments: ["twenty", "02020", "1885", "2028"])
-    func invalidModelYearsAreRejected(_ modelYear: String) {
+    @Test(arguments: ["2014", "2027", "twenty"])
+    func unavailableModelYearsAreRejected(_ modelYear: String) {
         var draft = VehicleDraft.lexusNXPreview
         draft.modelYear = modelYear
-
         #expect(validator.validate(draft)[.modelYear] != nil)
     }
 
@@ -39,7 +31,6 @@ struct VehicleDraftValidatorTests {
     func invalidMileagesAreRejected(_ mileage: String) {
         var draft = VehicleDraft.lexusNXPreview
         draft.mileage = mileage
-
         #expect(validator.validate(draft)[.mileage] != nil)
     }
 
@@ -47,38 +38,20 @@ struct VehicleDraftValidatorTests {
     func nonnegativeNumericMileagesAreAccepted(_ mileage: String) {
         var draft = VehicleDraft.lexusNXPreview
         draft.mileage = mileage
-
         #expect(validator.validate(draft)[.mileage] == nil)
     }
 
     @Test
-    func unsupportedMakeAndModelAreRejected() {
-        var draft = VehicleDraft.lexusNXPreview
-        draft.make = "Mercedes-Benz"
-        draft.model = "EQS 450+"
-
-        let errors = validator.validate(draft)
-
-        #expect(errors[.make]?.message == "Select a supported make.")
-        #expect(errors[.model]?.message == "Select a model supported for this make.")
-    }
-
-    @Test
-    func modelMustBelongToSelectedMake() {
+    func mismatchedDependentSelectionsAreRejected() {
         var draft = VehicleDraft.lexusNXPreview
         draft.make = "BMW"
-
-        #expect(validator.validate(draft)[.model] != nil)
-    }
-
-    @Test
-    func unsupportedOptionalSelectionsAreRejected() {
-        var draft = VehicleDraft.lexusNXPreview
+        draft.variant = "RX 500h"
         draft.colour = "Purple"
-        draft.fuelType = "Steam"
+        draft.fuelType = "Diesel"
 
         let errors = validator.validate(draft)
-
+        #expect(errors[.make] != nil)
+        #expect(errors[.variant] != nil)
         #expect(errors[.colour] != nil)
         #expect(errors[.fuelType] != nil)
     }

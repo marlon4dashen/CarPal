@@ -29,23 +29,27 @@ produce a testable user outcome rather than only infrastructure.
 * Create the SwiftUI app and module boundaries.
 * Add SwiftData models and a single-vehicle repository.
 * Implement Vehicle Setup, Vehicle Home, and Edit Vehicle.
-* Add the initial static vehicle visual catalog and Lexus NX base render.
+* Add the bundled Canadian Lexus NX/RX catalog and dependent profile fields.
+* Add static visual pairs for all seven supported NX/RX body phases.
 * Use mock vehicle and assessment data.
 
 ### Milestone 1A: Runtime vehicle colour system (Complete)
 
 Milestone 1A was completed before Milestone 2. The delivered implementation:
 
-* Defines a finite `VehiclePaintColor` palette and normalizes legacy or unknown
-  stored colour values to a supported recipe.
-* Provides pixel-aligned base-image and paint-mask pairs for the 2020 Lexus NX
-  300 and the generic unsupported-vehicle fallback.
+* Loads a versioned bundled JSON catalog for Canadian Lexus NX and RX model
+  years 2015 through 2026.
+* Defines the dependent Make -> Series -> Year -> Variant -> Trim -> Exterior
+  Colour chain and derives fuel type from the selected variant.
+* Provides pixel-aligned base-image and paint-mask pairs for seven NX/RX body
+  phases plus the defensive unsupported-vehicle fallback.
 * Uses `VehicleImageRenderer` to apply tuned light, dark, neutral, and saturated
   colour recipes only through each asset's paint mask.
-* Resolves an exact model visual only when both assets are present; every other
-  profile receives the colour-aware default vehicle.
-* Covers palette normalization, exact catalog matching, fallback behavior, and
-  asset availability with unit tests.
+* Resolves a visual by Lexus series and model-year body phase. Non-catalog saved
+  profiles fail closed and are removed; malformed in-memory identities use the
+  colour-aware default vehicle defensively.
+* Covers 2015-2026 catalog coverage, dependency validation, legacy-profile
+  removal, phase matching, palette mapping, and asset availability with tests.
 * Was visually verified in the iOS Simulator using white, black, red, green,
   and blue profiles. Painted panels change while windows, tires, wheels, lights,
   grille, badges, and trim retain their source appearance.
@@ -98,6 +102,7 @@ The iOS app owns:
 
 * Vehicle profile creation, editing, display, and persistence
 * Supported-model image resolution and runtime body-colour rendering
+* Bundled vehicle catalog loading and dependent-selection validation
 * BLE authorization, discovery, connection, and disconnection
 * Adapter initialization and OBD-II command execution
 * PID support discovery and core data retrieval
@@ -115,7 +120,9 @@ flowchart TD
     VM --> SC[Scan Coordinator]
     VM --> VR[Vehicle Repository]
     VM --> HR[Scan History Repository]
-    VM --> VC[Vehicle Visual Catalog]
+    VM --> VCR[Vehicle Catalog Repository]
+    VCR --> JSON[Bundled Lexus Catalog JSON]
+    VCR --> VC[Vehicle Visual Catalog]
     VC --> VIR[Vehicle Image Renderer]
     VIR --> VA[Base Images and Paint Masks]
 
@@ -141,6 +148,7 @@ flowchart TD
 | --- | --- |
 | `VehicleProfile` | Vehicle identity and editable profile fields |
 | `VehicleRepository` | Read and persist the single vehicle |
+| `LexusVehicleCatalogRepository` | Decode and validate the bundled Canadian NX/RX catalog and answer dependent-picker queries |
 | `VehicleVisualCatalog` | Resolve a normalized vehicle identity to an exact visual asset set or the default fallback |
 | `VehicleImageRenderer` | Apply a colour recipe through the paint mask while preserving vehicle detail |
 | `BluetoothAdapterClient` | Discover, connect to, and monitor the supported adapter |
@@ -158,6 +166,7 @@ remain explicit:
 
 ```swift
 struct VehicleProfile
+struct LexusVehicleCatalog
 struct VehicleVisualKey
 struct VehicleVisualAsset
 enum VehiclePaintColor
@@ -446,28 +455,26 @@ Create the single vehicle profile required before scanning.
 ### Content
 
 * Vehicle nickname
-* Make, model, and model year
+* Make, series, model year, powertrain variant, and trim/package
 * VIN or licence plate
 * Current mileage and units
-* Optional trim and fuel type
-* Body colour selected from the supported CarPal palette
+* OEM exterior colour
+* Derived, read-only fuel type
 
 ### Behavior
 
-* Group required identity fields before optional enrichment.
-* Use a make picker limited to Lexus and BMW for the initial MVP catalog.
-* Use a model picker whose options depend on the selected make; keep it disabled
-  until a make is selected and clear it when the make changes.
-* Use finite pickers for body colour and fuel type.
-* Initial Lexus models: NX 300, RX 350, IS 300, and ES 350.
-* Initial BMW models: 330i, 530i, and 740i.
-* Initial colours: white, black, silver, gray, red, blue, and green.
-* Initial fuel types: gasoline, diesel, hybrid, plug-in hybrid, electric, and
-  other.
+* Treat all vehicle identity fields as required.
+* Use a one-option make picker containing only Lexus.
+* Use a series picker containing NX and RX; disable it until make is selected.
+* Restrict model years to 2015 through 2026 for the selected series.
+* Populate variant from series and year, trim from variant, and OEM exterior
+  colour from trim using the bundled Canadian-market catalog.
+* Display fuel type read-only from the selected variant.
+* Clear every invalid downstream selection when an upstream picker changes.
 * Validate required fields inline.
 * Explain why VIN or licence plate is requested.
-* Keep the supported make/model options in the same catalog used for vehicle
-  visual resolution and validation.
+* Use the same catalog repository for setup, editing, validation, persistence
+  compatibility checks, and vehicle visual resolution.
 * Primary action: `Save vehicle`.
 * Successful save opens Vehicle Home.
 
@@ -499,19 +506,14 @@ gesture. It displays one static front three-quarter image.
 Resolve visuals with a normalized `VehicleVisualKey` containing:
 
 * Make
-* Model family
-* Body generation derived from model year
+* Series
+* Body phase derived from model year
 
 A key is supported only when its approved base image and paint mask both exist.
-The first implemented key is the 2020 Lexus NX 300. Candidate catalog expansion
-may include these families after their asset sets are created and reviewed:
-
-* Lexus NX, RX, IS, and ES
-* BMW 3 Series, 5 Series, and 7 Series
-
-Do not treat the candidate list as implemented support. An unmatched make,
-model, or generation uses the default-car asset. The UI must not display a
-different real model as a substitute or label a fallback as model matched.
+Implemented keys are NX 2015-2017, NX 2018-2021, NX 2022-2026, RX 2015,
+RX 2016-2019, RX 2020-2022, and RX 2023-2026. The selected trim does not change
+the body-phase image in MVP. An unmatched or malformed identity uses the
+default-car asset and is never labelled model matched.
 
 ### Asset production process
 

@@ -6,8 +6,10 @@ nonisolated struct VehicleDraftValidator: Sendable {
         case make
         case model
         case modelYear
+        case variant
         case vinOrPlate
         case mileage
+        case trim
         case colour
         case fuelType
     }
@@ -17,19 +19,17 @@ nonisolated struct VehicleDraftValidator: Sendable {
         let message: String
     }
 
-    private let currentYear: Int
+    private let catalog: LexusVehicleCatalogRepository
 
-    init(currentYear: Int = Calendar.current.component(.year, from: .now)) {
-        self.currentYear = currentYear
+    init(catalog: LexusVehicleCatalogRepository = .shared) {
+        self.catalog = catalog
     }
 
     func validate(_ draft: VehicleDraft) -> [Field: FieldError] {
         var errors: [Field: FieldError] = [:]
 
         require(draft.nickname, field: .nickname, label: "Nickname", errors: &errors)
-        validateMake(draft.make, errors: &errors)
-        validateModel(draft.model, make: draft.make, errors: &errors)
-        validateModelYear(draft.modelYear, errors: &errors)
+        validateCatalogSelection(draft, errors: &errors)
         require(
             draft.vinOrPlate,
             field: .vinOrPlate,
@@ -37,71 +37,49 @@ nonisolated struct VehicleDraftValidator: Sendable {
             errors: &errors
         )
         validateMileage(draft.mileage, errors: &errors)
-        validateOptionalSelection(
-            draft.colour,
-            field: .colour,
-            label: "Colour",
-            canonicalValue: VehicleProfileOptions.canonicalColour,
-            errors: &errors
-        )
-        validateOptionalSelection(
-            draft.fuelType,
-            field: .fuelType,
-            label: "Fuel type",
-            canonicalValue: VehicleProfileOptions.canonicalFuelType,
-            errors: &errors
-        )
 
         return errors
     }
 
-    private func validateMake(
-        _ value: String,
+    private func validateCatalogSelection(
+        _ draft: VehicleDraft,
         errors: inout [Field: FieldError]
     ) {
-        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errors[.make] = FieldError(field: .make, message: "Make is required.")
-            return
+        if draft.make != catalog.makeName {
+            errors[.make] = FieldError(field: .make, message: "Select Lexus.")
         }
-
-        if VehicleProfileOptions.canonicalMake(for: value) == nil {
-            errors[.make] = FieldError(field: .make, message: "Select a supported make.")
+        if catalog.canonicalSeries(draft.model) == nil {
+            errors[.model] = FieldError(field: .model, message: "Select NX or RX.")
         }
-    }
-
-    private func validateModel(
-        _ value: String,
-        make: String,
-        errors: inout [Field: FieldError]
-    ) {
-        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errors[.model] = FieldError(field: .model, message: "Model is required.")
-            return
-        }
-
-        if VehicleProfileOptions.canonicalModel(value, for: make) == nil {
-            errors[.model] = FieldError(
-                field: .model,
-                message: "Select a model supported for this make."
+        if !catalog.years(forSeries: draft.model).contains(draft.modelYear) {
+            errors[.modelYear] = FieldError(
+                field: .modelYear,
+                message: "Select a supported model year."
             )
         }
-    }
-
-    private func validateOptionalSelection(
-        _ value: String,
-        field: Field,
-        label: String,
-        canonicalValue: (String) -> String?,
-        errors: inout [Field: FieldError]
-    ) {
-        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return
+        if catalog.canonicalVariant(
+            draft.variant,
+            series: draft.model,
+            year: draft.modelYear
+        ) == nil {
+            errors[.variant] = FieldError(
+                field: .variant,
+                message: "Select an available variant."
+            )
         }
-
-        if canonicalValue(value) == nil {
-            errors[field] = FieldError(
-                field: field,
-                message: "Select a supported \(label.lowercased())."
+        if !catalog.trims(for: draft).contains(draft.trim) {
+            errors[.trim] = FieldError(field: .trim, message: "Select an available trim.")
+        }
+        if !catalog.colors(for: draft).map(\.name).contains(draft.colour) {
+            errors[.colour] = FieldError(
+                field: .colour,
+                message: "Select an available exterior colour."
+            )
+        }
+        if catalog.fuelType(for: draft) != draft.fuelType {
+            errors[.fuelType] = FieldError(
+                field: .fuelType,
+                message: "Fuel type must match the selected variant."
             )
         }
     }
@@ -114,37 +92,6 @@ nonisolated struct VehicleDraftValidator: Sendable {
     ) {
         if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             errors[field] = FieldError(field: field, message: "\(label) is required.")
-        }
-    }
-
-    private func validateModelYear(
-        _ value: String,
-        errors: inout [Field: FieldError]
-    ) {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !trimmed.isEmpty else {
-            errors[.modelYear] = FieldError(
-                field: .modelYear,
-                message: "Model year is required."
-            )
-            return
-        }
-
-        guard let year = Int(trimmed), String(year) == trimmed else {
-            errors[.modelYear] = FieldError(
-                field: .modelYear,
-                message: "Enter a valid four-digit model year."
-            )
-            return
-        }
-
-        let validYears = 1886...(currentYear + 1)
-        if !validYears.contains(year) {
-            errors[.modelYear] = FieldError(
-                field: .modelYear,
-                message: "Enter a model year between 1886 and \(currentYear + 1)."
-            )
         }
     }
 

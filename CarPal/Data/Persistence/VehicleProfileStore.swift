@@ -20,6 +20,12 @@ final class VehicleProfileStore {
 
     func load() throws {
         vehicle = try canonicalVehicle()
+
+        if let vehicle, !LexusVehicleCatalogRepository.shared.contains(vehicle.draft) {
+            modelContext.delete(vehicle)
+            try modelContext.save()
+            self.vehicle = nil
+        }
     }
 
     @discardableResult

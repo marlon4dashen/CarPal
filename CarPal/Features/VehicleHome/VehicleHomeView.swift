@@ -195,7 +195,7 @@ struct VehicleHomeView: View {
     }
 
     private var vehicleDescription: String {
-        [vehicle.modelYear, vehicle.make, vehicle.model]
+        [vehicle.modelYear, vehicle.make, vehicle.variant]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
     }

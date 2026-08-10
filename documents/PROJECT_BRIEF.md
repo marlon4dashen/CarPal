@@ -95,30 +95,29 @@ The app should allow the user to create and maintain one vehicle profile.
 Required vehicle fields for MVP:
 
 * Vehicle nickname
-* Make selected from the supported profile catalog
-* Model selected from the supported models for that make
-* Model year
+* Make (`Lexus` only)
+* Series (`NX` or `RX`)
+* Model year (`2015` through `2026`)
+* Powertrain variant
+* Trim/package
+* OEM exterior colour
+* Fuel type, derived from the selected variant
 * VIN or licence plate
 * Current mileage
 
-Optional enrichment fields for MVP:
+The bundled Canadian-market catalog is the source of truth for every dependent
+selection. Make is a one-option picker. Series is disabled until make is set;
+year depends on series; variant depends on series and year; trim depends on the
+variant; exterior colour depends on the trim. Changing an upstream value clears
+all invalid downstream values. Fuel type is shown read-only because it is a
+property of the selected variant, not an independent user choice.
 
-* Trim
-* Body colour from the supported CarPal colour palette
-* Fuel type
-
-The initial profile catalog supports:
-
-* Lexus: NX 300, RX 350, IS 300, and ES 350
-* BMW: 330i, 530i, and 740i
-
-Model remains disabled until a make is selected. Changing make clears a model
-that does not belong to the newly selected make.
-
-The initial body-colour palette is white, black, silver, gray, red, blue, and
-green. The initial fuel-type options are gasoline, diesel, hybrid, plug-in
-hybrid, electric, and other. These lists must be shared by the setup UI,
-validation, persistence normalization, and vehicle visual resolver.
+The catalog covers Lexus NX and RX model years 2015 through 2026. It includes
+the available variants, trim/package names, OEM exterior-colour names, and fuel
+types used by the registration UI and validator. IS, ES, BMW, unsupported years,
+and free-form vehicle identities are outside MVP scope. A saved legacy profile
+that cannot map exactly into this catalog is removed and must be registered
+again rather than guessed or silently coerced.
 
 The vehicle profile is the home screen for the vehicle and should display:
 
@@ -143,9 +142,16 @@ Vehicle Home uses one static front three-quarter image. The MVP does not include
 3D models, 360-degree rotation, or drag-to-rotate interaction.
 
 CarPal maintains a finite on-device vehicle visual catalog. A vehicle is
-visually supported only when its normalized make, model family, and body
-generation map to an approved asset set. Model year is used to select the body
-generation. The first implemented catalog entry is the 2020 Lexus NX 300.
+visually supported only when its normalized make, series, and body phase map to
+an approved asset set. Model year selects one of seven implemented phases:
+
+* NX 2015-2017
+* NX 2018-2021
+* NX 2022-2026
+* RX 2015
+* RX 2016-2019
+* RX 2020-2022
+* RX 2023-2026
 
 Each supported asset set contains:
 
@@ -161,9 +167,10 @@ If no exact catalog entry exists, Vehicle Home displays a polished default-car
 asset using the same runtime colour pipeline. It must not show artwork for a
 different real model or imply an exact match.
 
-The MVP uses a finite CarPal colour palette rather than arbitrary colour text.
-Colours are representative categories, not guaranteed matches for every OEM
-paint code or finish.
+The profile stores the selected OEM colour name. Rendering maps that name to a
+coarse on-device paint recipe such as white, black, silver, gray, red, blue, or
+green. The image is representative; it does not promise exact metallic,
+pearlescent, or paint-code reproduction.
 
 ## Part 2: OBD-II Connection and Health Assessment
 

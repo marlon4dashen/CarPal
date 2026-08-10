@@ -5,6 +5,7 @@ struct VehicleDraft: Equatable, Sendable {
     var make = ""
     var model = ""
     var modelYear = ""
+    var variant = ""
     var vinOrPlate = ""
     var mileage = ""
     var trim = ""
@@ -16,8 +17,9 @@ extension VehicleDraft {
     static let lexusNXPreview = VehicleDraft(
         nickname: "My Lexus",
         make: "Lexus",
-        model: "NX 300",
+        model: "NX",
         modelYear: "2020",
+        variant: "NX 300",
         vinOrPlate: "CARPAL",
         mileage: "48200",
         trim: "Luxury",

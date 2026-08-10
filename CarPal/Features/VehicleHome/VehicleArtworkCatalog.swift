@@ -1,5 +1,3 @@
-import Foundation
-
 nonisolated struct VehicleVisualAsset: Equatable, Sendable {
     let baseAssetName: String
     let paintMaskAssetName: String
@@ -9,16 +7,11 @@ nonisolated struct VehicleVisualAsset: Equatable, Sendable {
 
 nonisolated enum VehicleVisualCatalog {
     static func asset(for vehicle: VehicleDraft) -> VehicleVisualAsset {
-        let make = normalized(vehicle.make)
-        let model = normalized(vehicle.model)
-
-        if make == "lexus",
-           vehicle.modelYear == "2020",
-           model == "nx" || model.hasPrefix("nx ") {
+        if let phase = LexusVehicleCatalogRepository.shared.bodyPhase(for: vehicle) {
             return VehicleVisualAsset(
-                baseAssetName: "LexusNX2020",
-                paintMaskAssetName: "LexusNX2020PaintMask",
-                description: "2020 Lexus NX model preview",
+                baseAssetName: phase.visualKey,
+                paintMaskAssetName: "\(phase.visualKey)PaintMask",
+                description: "\(vehicle.modelYear) \(vehicle.variant) model preview",
                 isModelMatched: true
             )
         }
@@ -31,11 +24,4 @@ nonisolated enum VehicleVisualCatalog {
         )
     }
 
-    private static func normalized(_ value: String) -> String {
-        value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-            .split(whereSeparator: \Character.isWhitespace)
-            .joined(separator: " ")
-    }
 }
