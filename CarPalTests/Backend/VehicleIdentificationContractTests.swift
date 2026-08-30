@@ -44,7 +44,7 @@ struct VehicleIdentificationContractTests {
             )
         )
 
-        let result = try await client.decodeVehicle(request)
+        let result = await client.decodeVehicle(request)
 
         #expect(result.eligibility.healthScan == .supported)
         #expect(await client.decodeRequests == [request])

@@ -38,6 +38,23 @@ struct ScanHistoryStoreTests {
         #expect(store.results.map(\.id) == [newer.id, older.id])
     }
 
+    @Test
+    func clearDeletesOnlyTheUnregisteredVehiclesHistory() throws {
+        let container = try makeContainer()
+        let vehicleID = UUID()
+        let otherVehicleID = UUID()
+        let store = ScanHistoryStore(modelContext: container.mainContext)
+        try store.save(makeResult(vehicleID: vehicleID, scannedAt: .now))
+        try store.save(makeResult(vehicleID: otherVehicleID, scannedAt: .now))
+        try store.load(vehicleID: vehicleID)
+
+        try store.clear(vehicleID: vehicleID)
+
+        #expect(store.results.isEmpty)
+        let entities = try container.mainContext.fetch(FetchDescriptor<ScanHistoryEntity>())
+        #expect(entities.map(\.vehicleID) == [otherVehicleID])
+    }
+
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
             for: ScanHistoryEntity.self,

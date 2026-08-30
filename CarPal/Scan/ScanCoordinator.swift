@@ -62,6 +62,7 @@ final class ScanCoordinator {
             setActive(.initializing)
             try await diagnostics.initializeSession()
             try ensureRunning()
+            sessionManager.markVehicleReady(adapterName: adapter.name)
             setFinished(.initializing, detail: "Vehicle protocol detected")
 
             setActive(.supportCheck)

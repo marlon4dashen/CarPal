@@ -20,6 +20,32 @@ struct ELM327ParserTests {
     }
 
     @Test
+    func parsesMode09SupportedPIDBitmap() {
+        let supported = parser.supportedPIDs(
+            base: 0x00,
+            requestMode: 0x09,
+            response: "49 00 50 40 00 00"
+        )
+
+        #expect(supported.contains(0x02))
+        #expect(supported.contains(0x04))
+        #expect(supported.contains(0x0A))
+    }
+
+    @Test
+    func parsesMultiframeMode09VIN() {
+        let response = """
+        0: 49 02 01 4A 54 4A 59 41 52
+        1: 42 5A 30 4C 32 30 30 30
+        2: 30 31
+        """
+
+        #expect(parser.vehicleInformationStrings(pid: 0x02, response: response) == [
+            "JTJYARBZ0L2000001"
+        ])
+    }
+
+    @Test
     func unionsSupportedPIDsFromMultipleECUsWithCANHeaders() {
         let response = """
         7E9 06 41 00 00 00 00 01

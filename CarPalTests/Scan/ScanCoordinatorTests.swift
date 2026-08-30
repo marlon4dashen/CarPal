@@ -8,7 +8,7 @@ struct ScanCoordinatorTests {
     func scriptedScanCompletesAllSevenStagesInOrder() async {
         let mock = ScriptedMockAdapter(scenario: .serviceSoon, delay: .zero)
         let coordinator = ScanCoordinator(
-            sessionManager: AdapterSessionManager(client: mock),
+            sessionManager: AdapterSessionManager(client: mock, initializer: mock),
             diagnostics: mock
         )
 
@@ -30,7 +30,7 @@ struct ScanCoordinatorTests {
     func connectionFailureStopsAtConnectingWithTypedContext() async {
         let mock = ScriptedMockAdapter(scenario: .connectionFailure, delay: .zero)
         let coordinator = ScanCoordinator(
-            sessionManager: AdapterSessionManager(client: mock),
+            sessionManager: AdapterSessionManager(client: mock, initializer: mock),
             diagnostics: mock
         )
 
@@ -53,7 +53,7 @@ struct ScanCoordinatorTests {
     func incompleteDataCompletesTransportAndReturnsUnableToAssess() async {
         let mock = ScriptedMockAdapter(scenario: .incompleteData, delay: .zero)
         let coordinator = ScanCoordinator(
-            sessionManager: AdapterSessionManager(client: mock),
+            sessionManager: AdapterSessionManager(client: mock, initializer: mock),
             diagnostics: mock
         )
 

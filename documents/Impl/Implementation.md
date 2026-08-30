@@ -897,6 +897,9 @@ vehicle branches.
 
 ### Milestone 5: OBD-gated auto-registration
 
+Status: implemented. Physical validation of Mode 09 identity retrieval across
+additional ECU response formats remains ongoing.
+
 * Replace first-launch manual setup with the registration gate.
 * Extract `AdapterSessionManager` from scan-specific coordination.
 * Implement Mode 09 VIN and available ECU identity retrieval.

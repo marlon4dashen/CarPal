@@ -9,14 +9,56 @@ struct ELM327Parser: Sendable {
         payloads(for: mode, pid: pid, in: response).first
     }
 
-    nonisolated func supportedPIDs(base: UInt8, response: String) -> Set<UInt8> {
+    nonisolated func supportedPIDs(
+        base: UInt8,
+        requestMode: UInt8 = 0x01,
+        response: String
+    ) -> Set<UInt8> {
         var supported = Set<UInt8>()
-        for payload in payloads(for: 0x01, pid: base, in: response) where payload.count >= 4 {
+        for payload in payloads(for: requestMode, pid: base, in: response) where payload.count >= 4 {
             for bit in 0..<32 where payload[bit / 8] & (1 << (7 - bit % 8)) != 0 {
                 supported.insert(base + UInt8(bit + 1))
             }
         }
         return supported
+    }
+
+    nonisolated func vehicleInformationStrings(pid: UInt8, response: String) -> [String] {
+        var records: [[UInt8]] = []
+        var current: [UInt8] = []
+
+        for line in response.components(separatedBy: .newlines) {
+            let lineBytes = bytes(in: line)
+            if let marker = lineBytes.indices.first(where: { index in
+                lineBytes[index] == 0x49
+                    && lineBytes.indices.contains(index + 1)
+                    && lineBytes[index + 1] == pid
+            }) {
+                if !current.isEmpty {
+                    records.append(current)
+                }
+                current = Array(lineBytes.dropFirst(marker + 2))
+                if current.first.map({ $0 > 0 && $0 < 0x20 }) == true {
+                    current.removeFirst()
+                }
+            } else if !current.isEmpty {
+                var continuation = lineBytes
+                if continuation.first.map({ (0x21...0x2F).contains($0) }) == true {
+                    continuation.removeFirst()
+                }
+                current.append(contentsOf: continuation)
+            }
+        }
+        if !current.isEmpty {
+            records.append(current)
+        }
+
+        return records.compactMap { bytes in
+            let printable = bytes.prefix { (0x20...0x7E).contains($0) }
+            guard !printable.isEmpty else { return nil }
+            return String(bytes: printable, encoding: .ascii)?
+                .trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters))
+        }.filter { !$0.isEmpty }
     }
 
     nonisolated func troubleCodes(from response: String) -> [DiagnosticTroubleCode] {

@@ -36,6 +36,12 @@ struct AdapterStatusPresentation: Equatable, Sendable {
             actionTitle = nil
         case let .connected(name):
             title = "Adapter connected"
+            detail = "Verifying vehicle session with \(name)"
+            systemImage = "ellipsis.circle"
+            tone = .caution
+            actionTitle = nil
+        case let .vehicleReady(name):
+            title = "Vehicle ready"
             detail = name
             systemImage = "checkmark.circle.fill"
             tone = .positive

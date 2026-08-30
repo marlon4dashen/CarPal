@@ -37,16 +37,6 @@ struct ContentView: View {
 
         do {
             try store.load()
-#if DEBUG
-            if DebugLaunchConfiguration.seedsPreviewVehicle {
-                let previewDraft = DebugLaunchConfiguration.previewDraft
-                if store.vehicle == nil {
-                    try store.create(from: previewDraft)
-                } else if DebugLaunchConfiguration.resetsPreviewVehicle {
-                    try store.update(with: previewDraft)
-                }
-            }
-#endif
             if let vehicle = store.vehicle {
                 try historyStore.load(vehicleID: vehicle.id)
             }
@@ -62,19 +52,13 @@ private struct VehicleAppFlow: View {
     @Bindable var store: VehicleProfileStore
     @Bindable var historyStore: ScanHistoryStore
 
-    @State private var setupDraft = VehicleDraft()
-    @State private var showsSetupValidationErrors = false
-    @State private var path: [VehicleAppRoute] = DebugLaunchConfiguration.startsMockScan
-        ? [.scan]
-        : []
+    @State private var path: [VehicleAppRoute] = []
     @State private var presentedDestination: PlaceholderDestination?
     @State private var showsEditVehicle = false
-    @State private var persistenceError: String?
     @State private var vehicleIntegration = DebugLaunchConfiguration.usesMockAdapter
         ? VehicleIntegration.scripted()
         : VehicleIntegration.live()
-
-    private let validator = VehicleDraftValidator()
+    private let backendClient = BackendConfiguration.vehicleIdentificationClient
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -91,13 +75,10 @@ private struct VehicleAppFlow: View {
                         onSettings: { presentedDestination = .settings }
                     )
                 } else {
-                    VehicleSetupView(
-                        draft: $setupDraft,
-                        fieldErrors: showsSetupValidationErrors
-                            ? formErrors(for: setupDraft)
-                            : .init(),
-                        canSubmit: true,
-                        onSave: createVehicle
+                    VehicleRegistrationView(
+                        store: store,
+                        integration: vehicleIntegration,
+                        backendClient: backendClient
                     )
                 }
             }
@@ -109,7 +90,9 @@ private struct VehicleAppFlow: View {
             if let vehicle = store.vehicle {
                 EditVehicleSheet(
                     initialDraft: vehicle.draft,
-                    store: store
+                    engineModel: vehicle.engineModel,
+                    store: store,
+                    onUnregister: unregisterVehicle
                 )
             }
         }
@@ -119,17 +102,6 @@ private struct VehicleAppFlow: View {
                 message: Text(destination.message),
                 dismissButton: .default(Text("OK"))
             )
-        }
-        .alert(
-            "Could not save vehicle",
-            isPresented: Binding(
-                get: { persistenceError != nil },
-                set: { if !$0 { persistenceError = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(persistenceError ?? "An unknown persistence error occurred.")
         }
     }
 
@@ -215,26 +187,15 @@ private struct VehicleAppFlow: View {
         }
     }
 
-    private func createVehicle() {
-        let errors = validator.validate(setupDraft)
-        guard errors.isEmpty else {
-            showsSetupValidationErrors = true
-            return
+    private func unregisterVehicle() throws {
+        guard let vehicleID = store.vehicle?.id else {
+            throw VehicleProfileStore.StoreError.profileNotFound
         }
-
-        do {
-            try store.create(from: setupDraft)
-        } catch {
-            persistenceError = error.localizedDescription
-        }
-    }
-
-    private func formErrors(for draft: VehicleDraft) -> VehicleFormFieldErrors {
-        VehicleFormFieldErrors(
-            validator.validate(draft).reduce(into: [:]) { result, error in
-                result[error.key.formField] = error.value.message
-            }
-        )
+        try historyStore.clear(vehicleID: vehicleID)
+        try store.unregister()
+        vehicleIntegration.sessionManager.disconnect()
+        path.removeAll()
+        showsEditVehicle = false
     }
 }
 
@@ -243,13 +204,21 @@ private struct EditVehicleSheet: View {
 
     @Bindable var store: VehicleProfileStore
     @State private var draft: VehicleDraft
-    @State private var showsValidationErrors = false
+    private let engineModel: String
+    private let onUnregister: () throws -> Void
     @State private var persistenceError: String?
 
-    private let validator = VehicleDraftValidator()
+    private let selectionPolicy = VehicleRegistrationSelectionPolicy()
 
-    init(initialDraft: VehicleDraft, store: VehicleProfileStore) {
+    init(
+        initialDraft: VehicleDraft,
+        engineModel: String,
+        store: VehicleProfileStore,
+        onUnregister: @escaping () throws -> Void
+    ) {
         self.store = store
+        self.engineModel = engineModel
+        self.onUnregister = onUnregister
         _draft = State(initialValue: initialDraft)
     }
 
@@ -257,9 +226,10 @@ private struct EditVehicleSheet: View {
         NavigationStack {
             EditVehicleView(
                 draft: $draft,
-                fieldErrors: showsValidationErrors ? formErrors : .init(),
-                canSubmit: true,
+                engineModel: engineModel,
+                canSubmit: canSave,
                 onSave: save,
+                onUnregister: unregister,
                 onCancel: { dismiss() }
             )
         }
@@ -276,23 +246,32 @@ private struct EditVehicleSheet: View {
         }
     }
 
-    private var formErrors: VehicleFormFieldErrors {
-        VehicleFormFieldErrors(
-            validator.validate(draft).reduce(into: [:]) { result, error in
-                result[error.key.formField] = error.value.message
-            }
-        )
+    private var canSave: Bool {
+        let mileage = draft.mileage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mileageIsValid = mileage.isEmpty
+            || Double(mileage).map { $0.isFinite && $0 >= 0 } == true
+        return mileageIsValid
+            && selectionPolicy.validates(VehicleRegistrationDraft(profile: draft))
     }
 
     private func save() {
-        let errors = validator.validate(draft)
-        guard errors.isEmpty else {
-            showsValidationErrors = true
-            return
-        }
+        guard canSave else { return }
 
         do {
-            try store.update(with: draft)
+            try store.updatePresentation(
+                trim: draft.trim,
+                colour: draft.colour,
+                mileage: draft.mileage
+            )
+            dismiss()
+        } catch {
+            persistenceError = error.localizedDescription
+        }
+    }
+
+    private func unregister() {
+        do {
+            try onUnregister()
             dismiss()
         } catch {
             persistenceError = error.localizedDescription
@@ -304,57 +283,14 @@ private enum DebugLaunchConfiguration {
 #if DEBUG
     private static let arguments = ProcessInfo.processInfo.arguments
 
-    static var seedsPreviewVehicle: Bool {
-        arguments.contains("-seedPreviewVehicle")
-    }
-
-    static var resetsPreviewVehicle: Bool {
-        arguments.contains("-resetPreviewVehicle")
-    }
-
-    static var startsMockScan: Bool {
-        arguments.contains("-startMockScan")
-    }
-
     static var usesMockAdapter: Bool {
-        startsMockScan || arguments.contains("-useMockAdapter")
-    }
-
-    static var previewDraft: VehicleDraft {
-        var draft = arguments.contains("-previewRX2023")
-            ? VehicleDraft(
-                nickname: "My Lexus RX",
-                make: "Lexus",
-                model: "RX",
-                modelYear: "2023",
-                variant: "RX 350",
-                vinOrPlate: "CARPALRX",
-                mileage: "24000",
-                trim: "Premium",
-                colour: "Nori Green Pearl",
-                fuelType: "Gasoline"
-            )
-            : .lexusNXPreview
-
-        if let paintArgument = arguments.first(where: {
-            $0.hasPrefix("-previewPaintColor=")
-        }) {
-            let value = String(paintArgument.dropFirst("-previewPaintColor=".count))
-            let requested = VehiclePaintColor(profileValue: value)
-            let catalog = LexusVehicleCatalogRepository.shared
-            draft.colour = catalog.colors(for: draft).first {
-                catalog.renderColor(for: $0.name) == requested
-            }?.name ?? draft.colour
-        }
-
-        return draft
+        arguments.contains("-useMockAdapter")
     }
 
     static var assessment: AssessmentPreview? {
-        seedsPreviewVehicle ? .sample : nil
+        nil
     }
 #else
-    static let startsMockScan = false
     static let usesMockAdapter = false
     static let assessment: AssessmentPreview? = nil
 #endif
@@ -384,31 +320,4 @@ private enum VehicleAppRoute: Hashable {
     case scan
     case result(UUID)
     case history
-}
-
-private extension VehicleDraftValidator.Field {
-    var formField: VehicleFormField {
-        switch self {
-        case .nickname:
-            .nickname
-        case .make:
-            .make
-        case .model:
-            .model
-        case .modelYear:
-            .modelYear
-        case .variant:
-            .variant
-        case .vinOrPlate:
-            .vinOrPlate
-        case .mileage:
-            .mileage
-        case .trim:
-            .trim
-        case .colour:
-            .colour
-        case .fuelType:
-            .fuelType
-        }
-    }
 }

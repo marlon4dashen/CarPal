@@ -1,6 +1,7 @@
 import Foundation
 
-actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities {
+actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitializing,
+    VehicleIdentityReading {
     private let scheduler: OBDCommandScheduler
     private let parser = ELM327Parser()
     private var supportedPIDs = Set<UInt8>()
@@ -63,6 +64,59 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities {
             unavailableRequiredReadings: required.compactMap { discovered.contains($0.0) ? nil : $0.1 },
             unavailableOptionalReadings: optional.compactMap { discovered.contains($0.0) ? nil : $0.1 }
         )
+    }
+
+    func readVehicleIdentity() async throws -> OBDVehicleIdentity {
+        let parser = parser
+        return try await scheduler.withExclusiveAccess { session in
+            var supportedModes: [Int] = []
+            let protocolDescription = try? await session.execute(
+                ELMCommandRequest("ATDP", acceptsAnyResponse: true)
+            )
+
+            if let response = try? await session.execute(
+                ELMCommandRequest("0100", allowsNoData: true)
+            ), !Self.isNoData(response), !parser.supportedPIDs(base: 0, response: response).isEmpty {
+                supportedModes.append(1)
+            }
+
+            let mode09Response = try await session.execute(
+                ELMCommandRequest("0900", allowsNoData: true)
+            )
+            let mode09PIDs = Self.isNoData(mode09Response)
+                ? []
+                : parser.supportedPIDs(base: 0, requestMode: 0x09, response: mode09Response)
+            if !mode09PIDs.isEmpty {
+                supportedModes.append(9)
+            }
+
+            let vin = try await Self.readMode09Strings(
+                pid: 0x02,
+                isSupported: mode09PIDs.contains(0x02),
+                parser: parser,
+                session: session
+            ).first(where: Self.isValidVIN)
+            let calibrationIDs = try await Self.readMode09Strings(
+                pid: 0x04,
+                isSupported: mode09PIDs.contains(0x04),
+                parser: parser,
+                session: session
+            )
+            let ecuNames = try await Self.readMode09Strings(
+                pid: 0x0A,
+                isSupported: mode09PIDs.contains(0x0A),
+                parser: parser,
+                session: session
+            )
+
+            return OBDVehicleIdentity(
+                vin: vin,
+                calibrationIDs: calibrationIDs,
+                ecuNames: ecuNames,
+                supportedModes: supportedModes,
+                protocolDescription: protocolDescription
+            )
+        }
     }
 
     func retrieveCoreData() async throws -> RawScanData {
@@ -141,6 +195,29 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities {
         guard let payload = parser.payload(for: 0x01, pid: pid, in: response),
               payload.count >= byteCount else { return nil }
         return transform(Array(payload.prefix(byteCount)))
+    }
+
+    nonisolated private static func readMode09Strings(
+        pid: UInt8,
+        isSupported: Bool,
+        parser: ELM327Parser,
+        session: OBDCommandSession
+    ) async throws -> [String] {
+        guard isSupported else { return [] }
+        let response = try await session.execute(
+            ELMCommandRequest(String(format: "09%02X", pid), allowsNoData: true)
+        )
+        guard !isNoData(response) else { return [] }
+        return parser.vehicleInformationStrings(pid: pid, response: response)
+    }
+
+    nonisolated private static func isValidVIN(_ value: String) -> Bool {
+        value.count == 17
+            && value.allSatisfy { character in
+                character.isASCII
+                    && (character.isNumber || character.isLetter)
+                    && !["I", "O", "Q"].contains(character.uppercased())
+            }
     }
 
     nonisolated private static func readFuelSystemStatus(

@@ -21,9 +21,22 @@
 		100000000000000000000002 /* CarPalTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CarPalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		100000000000000000000012 /* Exceptions for "CarPal" folder in "CarPal" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 100000000000000000000040 /* CarPal */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		100000000000000000000010 /* CarPal */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				100000000000000000000012 /* Exceptions for "CarPal" folder in "CarPal" target */,
+			);
 			path = CarPal;
 			sourceTree = "<group>";
 		};
@@ -250,7 +263,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CarPal/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CarPal uses Bluetooth to connect to your Veepeak OBD-II adapter and read vehicle diagnostic data during a scan.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CarPal connects to your development backend on the local network to identify and register the vehicle.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -277,7 +292,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = H7UVNVZYJ3;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CarPal/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CarPal uses Bluetooth to connect to your Veepeak OBD-II adapter and read vehicle diagnostic data during a scan.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CarPal connects to the CarPal backend to identify and register the vehicle.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

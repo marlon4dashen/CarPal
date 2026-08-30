@@ -4,12 +4,13 @@ import Testing
 
 struct VehicleHomePresentationTests {
     @Test(
-        "Only a connected adapter permits scanning",
+        "Only a vehicle-ready adapter permits scanning",
         arguments: [
             (AdapterConnectionState.notChecked, false),
             (.disconnected, false),
             (.searching, false),
-            (.connected(name: "Veepeak OBDCheck BLE"), true)
+            (.connected(name: "Veepeak OBDCheck BLE"), false),
+            (.vehicleReady(name: "Veepeak OBDCheck BLE"), true)
         ]
     )
     func scanReadiness(state: AdapterConnectionState, expected: Bool) {
@@ -34,12 +35,23 @@ struct VehicleHomePresentationTests {
     }
 
     @Test
-    func connectedAdapterIncludesItsNameAndPositiveTone() {
+    func connectedAdapterIsStillVerifyingVehicleSession() {
         let presentation = AdapterStatusPresentation(
             state: .connected(name: "Veepeak OBDCheck BLE")
         )
 
-        #expect(presentation.title == "Adapter connected")
+        #expect(presentation.title == "Verifying vehicle session")
+        #expect(presentation.detail == "Veepeak OBDCheck BLE")
+        #expect(presentation.tone == .caution)
+    }
+
+    @Test
+    func vehicleReadyAdapterIncludesItsNameAndPositiveTone() {
+        let presentation = AdapterStatusPresentation(
+            state: .vehicleReady(name: "Veepeak OBDCheck BLE")
+        )
+
+        #expect(presentation.title == "Vehicle ready")
         #expect(presentation.detail == "Veepeak OBDCheck BLE")
         #expect(presentation.tone == .positive)
     }

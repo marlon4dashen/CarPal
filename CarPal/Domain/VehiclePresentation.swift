@@ -5,9 +5,10 @@ enum AdapterConnectionState: Equatable, Sendable {
     case disconnected
     case searching
     case connected(name: String)
+    case vehicleReady(name: String)
 
     var isReadyForScan: Bool {
-        if case .connected = self {
+        if case .vehicleReady = self {
             return true
         }
         return false

@@ -7,14 +7,14 @@ struct OBDArchitectureTests {
     @Test
     func adapterSessionManagerPublishesTransportState() async throws {
         let adapter = ScriptedMockAdapter(scenario: .healthy, delay: .zero)
-        let manager = AdapterSessionManager(client: adapter)
+        let manager = AdapterSessionManager(client: adapter, initializer: adapter)
 
         #expect(manager.connectionState == .notChecked)
 
         let discovered = try await manager.prepareConnection()
 
         #expect(discovered.name == "Veepeak OBDCheck BLE")
-        #expect(manager.connectionState == .connected(name: "Veepeak OBDCheck BLE"))
+        #expect(manager.connectionState == .vehicleReady(name: "Veepeak OBDCheck BLE"))
 
         manager.disconnect()
         #expect(manager.connectionState == .disconnected)
@@ -45,6 +45,29 @@ struct OBDArchitectureTests {
         #expect(executor.commands == [
             "ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP0", "ATI"
         ])
+    }
+
+    @Test
+    func diagnosticServiceReadsMode09VehicleIdentity() async throws {
+        let executor = RecordingELMExecutor(responses: [
+            "ATDP": "AUTO, ISO 15765-4 (CAN 11/500)",
+            "0100": "41 00 18 18 00 01",
+            "0900": "49 00 50 40 00 00",
+            "0902": "0: 49 02 01 4A 54 4A 59 41 52\n1: 42 5A 30 4C 32 30 30 30\n2: 30 31",
+            "0904": "49 04 01 43 41 4C 2D 54 45 53 54",
+            "090A": "49 0A 01 45 43 4D"
+        ])
+        let service = StandardOBDDiagnosticService(
+            scheduler: OBDCommandScheduler(executor: executor)
+        )
+
+        let identity = try await service.readVehicleIdentity()
+
+        #expect(identity.vin == "JTJYARBZ0L2000001")
+        #expect(identity.calibrationIDs == ["CAL-TEST"])
+        #expect(identity.ecuNames == ["ECM"])
+        #expect(identity.supportedModes == [1, 9])
+        #expect(identity.protocolDescription == "AUTO, ISO 15765-4 (CAN 11/500)")
     }
 
     @Test

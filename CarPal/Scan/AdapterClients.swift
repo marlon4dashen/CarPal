@@ -61,6 +61,22 @@ protocol ScanDiagnosticCapabilities: Sendable {
     func retrieveCoreData() async throws -> RawScanData
 }
 
+protocol OBDSessionInitializing: Sendable {
+    func initializeSession() async throws
+}
+
+struct OBDVehicleIdentity: Equatable, Sendable {
+    let vin: String?
+    let calibrationIDs: [String]
+    let ecuNames: [String]
+    let supportedModes: [Int]
+    let protocolDescription: String?
+}
+
+protocol VehicleIdentityReading: Sendable {
+    func readVehicleIdentity() async throws -> OBDVehicleIdentity
+}
+
 struct OBDCommandSession: Sendable {
     private let executeRequest: @Sendable (ELMCommandRequest) async throws -> String
 
@@ -121,13 +137,23 @@ actor OBDCommandScheduler {
 @Observable
 final class AdapterSessionManager {
     private let client: any BluetoothAdapterClient
+    private let initializer: any OBDSessionInitializing
     private(set) var connectionState: AdapterConnectionState
 
-    init(client: any BluetoothAdapterClient) {
+    init(
+        client: any BluetoothAdapterClient,
+        initializer: any OBDSessionInitializing
+    ) {
         self.client = client
+        self.initializer = initializer
         connectionState = client.connectionState
         client.setConnectionStateHandler { [weak self] state in
-            self?.connectionState = state
+            guard let self else { return }
+            if case .vehicleReady = self.connectionState,
+               case .connected = state {
+                return
+            }
+            self.connectionState = state
         }
     }
 
@@ -143,7 +169,13 @@ final class AdapterSessionManager {
     func prepareConnection() async throws -> DiscoveredAdapter {
         let adapter = try await discoverSupportedAdapter()
         try await connect(to: adapter)
+        try await initializer.initializeSession()
+        markVehicleReady(adapterName: adapter.name)
         return adapter
+    }
+
+    func markVehicleReady(adapterName: String) {
+        connectionState = .vehicleReady(name: adapterName)
     }
 
     func disconnect() {
@@ -159,7 +191,8 @@ enum MockScanScenario: String, CaseIterable, Sendable {
 }
 
 @MainActor
-final class ScriptedMockAdapter: BluetoothAdapterClient, ScanDiagnosticCapabilities, @unchecked Sendable {
+final class ScriptedMockAdapter: BluetoothAdapterClient, ScanDiagnosticCapabilities,
+    OBDSessionInitializing, VehicleIdentityReading, @unchecked Sendable {
     private enum MockError: Error {
         case connectionInterrupted
     }
@@ -246,6 +279,17 @@ final class ScriptedMockAdapter: BluetoothAdapterClient, ScanDiagnosticCapabilit
         )
     }
 
+    func readVehicleIdentity() async throws -> OBDVehicleIdentity {
+        try await pause()
+        return OBDVehicleIdentity(
+            vin: "JTJYARBZ0L2000001",
+            calibrationIDs: ["CAL-NX300-TEST"],
+            ecuNames: ["ECM"],
+            supportedModes: [1, 3, 7, 9],
+            protocolDescription: "ISO 15765-4 CAN"
+        )
+    }
+
     private func pause() async throws {
         try await Task.sleep(for: delay)
     }
@@ -255,21 +299,28 @@ final class ScriptedMockAdapter: BluetoothAdapterClient, ScanDiagnosticCapabilit
 final class VehicleIntegration {
     let sessionManager: AdapterSessionManager
     let diagnostics: any ScanDiagnosticCapabilities
+    let identityReader: any VehicleIdentityReading
 
     init(
         adapterClient: any BluetoothAdapterClient,
-        diagnostics: any ScanDiagnosticCapabilities
+        diagnostics: any ScanDiagnosticCapabilities,
+        initializer: any OBDSessionInitializing,
+        identityReader: any VehicleIdentityReading
     ) {
-        sessionManager = AdapterSessionManager(client: adapterClient)
+        sessionManager = AdapterSessionManager(client: adapterClient, initializer: initializer)
         self.diagnostics = diagnostics
+        self.identityReader = identityReader
     }
 
     static func live() -> VehicleIntegration {
         let client = CoreBluetoothOBDClient()
         let scheduler = OBDCommandScheduler(executor: client)
+        let service = StandardOBDDiagnosticService(scheduler: scheduler)
         return VehicleIntegration(
             adapterClient: client,
-            diagnostics: StandardOBDDiagnosticService(scheduler: scheduler)
+            diagnostics: service,
+            initializer: service,
+            identityReader: service
         )
     }
 
@@ -278,6 +329,11 @@ final class VehicleIntegration {
         delay: Duration = .milliseconds(650)
     ) -> VehicleIntegration {
         let mock = ScriptedMockAdapter(scenario: scenario, delay: delay)
-        return VehicleIntegration(adapterClient: mock, diagnostics: mock)
+        return VehicleIntegration(
+            adapterClient: mock,
+            diagnostics: mock,
+            initializer: mock,
+            identityReader: mock
+        )
     }
 }

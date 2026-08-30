@@ -9,8 +9,11 @@ plain-language vehicle health summary for non-technical drivers.
 
 ## MVP
 
-- Register and edit one supported Lexus vehicle.
-- Support Canadian Lexus NX and RX models from 2015 through 2026.
+- Require an initialized Veepeak OBD session before registering one vehicle.
+- Read VIN and available ECU identity through OBD Mode 09.
+- Decode and normalize vehicle identity through the CarPal backend, with
+  source-attributed user confirmation before local persistence.
+- Unregister the saved vehicle and clear its scan history to restart registration.
 - Check and connect to a Veepeak OBDCheck BLE adapter using CoreBluetooth.
 - Initialize an ELM327 session and retrieve standard Mode 01 and Mode 03 data.
 - Show a seven-stage scan, local scan history, and a conservative health result.
@@ -26,6 +29,7 @@ hardware validation is ongoing.
 - CoreBluetooth
 - SwiftData
 - Swift Testing
+- FastAPI and Pydantic
 - iOS 17+
 
 ## Run Locally
@@ -33,8 +37,14 @@ hardware validation is ongoing.
 1. Open `CarPal.xcodeproj` in Xcode.
 2. Select the CarPal target and configure your signing team.
 3. Choose an iPhone or iOS Simulator and run the `CarPal` scheme.
-4. For a real scan, run on an iPhone, plug in the Veepeak adapter, turn on the
-   vehicle, and use **Check** on the adapter card before starting the scan.
+4. Start the backend from `backend/` with
+   `.venv/bin/uvicorn carpal_backend.main:app --reload`.
+5. For a real device, set the Run scheme environment variable
+   `CARPAL_BACKEND_URL` to your Mac's LAN URL, such as
+   `http://192.168.1.20:8000`. The simulator defaults to
+   `http://127.0.0.1:8000`.
+6. Plug in the Veepeak adapter, turn on the ignition, and complete registration
+   from the adapter-provided VIN before starting a scan.
 
 Run the automated tests with:
 
@@ -45,30 +55,28 @@ xcodebuild -project CarPal.xcodeproj \
   test
 ```
 
-### Simulator Mock Scan
+### Simulator Mock Registration
 
-In **Product > Scheme > Edit Scheme > Run > Arguments**, enable these as two
-separate launch arguments:
+In **Product > Scheme > Edit Scheme > Run > Arguments**, enable:
 
 ```text
--seedPreviewVehicle
 -useMockAdapter
 ```
 
-Add `-startMockScan` to open and run the scripted scan immediately. Keep the
-leading hyphen on every argument; without it, CarPal uses the live Bluetooth
-client and waits for a physical adapter.
+Delete the app from the simulator first if a vehicle is already saved. This
+argument runs the same registration gate with deterministic adapter, VIN, and
+backend fixtures; it does not seed a profile or bypass `vehicleReady`.
 
 ## Current Limitations
 
 - The MVP supports one vehicle and one adapter family.
-- Vehicle compatibility outside the documented Lexus NX/RX catalog is not
-  guaranteed.
+- Health Scan eligibility is currently enabled only for the versioned 2020
+  Lexus NX 300 diagnostic profile.
 - The current health score is an early deterministic rule set, not a complete
   mechanical diagnosis.
 - Backend-generated explanations and wider reliability validation are planned
   for later milestones.
 
 See [Project Brief](documents/PROJECT_BRIEF.md) for product scope and
-[Implementation Plan](documents/Implementation.md) for architecture and
+[Implementation Plan](documents/Impl/Implementation.md) for architecture and
 milestone details.
