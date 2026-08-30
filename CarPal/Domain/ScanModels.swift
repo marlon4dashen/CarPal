@@ -83,6 +83,11 @@ enum SensorMetric: String, CaseIterable, Codable, Sendable {
 struct DiagnosticTroubleCode: Codable, Equatable, Sendable {
     let code: String
     let summary: String
+
+    nonisolated init(code: String, summary: String) {
+        self.code = code
+        self.summary = summary
+    }
 }
 
 struct RawScanData: Equatable, Sendable {
@@ -91,6 +96,20 @@ struct RawScanData: Equatable, Sendable {
     let troubleCodesAvailable: Bool
     let fuelSystemStatus: String?
     let freezeFrameAvailable: Bool
+
+    nonisolated init(
+        values: [SensorMetric: Double],
+        troubleCodes: [DiagnosticTroubleCode],
+        troubleCodesAvailable: Bool,
+        fuelSystemStatus: String?,
+        freezeFrameAvailable: Bool
+    ) {
+        self.values = values
+        self.troubleCodes = troubleCodes
+        self.troubleCodesAvailable = troubleCodesAvailable
+        self.fuelSystemStatus = fuelSystemStatus
+        self.freezeFrameAvailable = freezeFrameAvailable
+    }
 }
 
 struct NormalizedScan: Equatable, Sendable {

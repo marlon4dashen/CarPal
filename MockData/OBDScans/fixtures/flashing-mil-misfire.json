@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "id": "flashing-mil-misfire",
+  "description": "Active cylinder misfire represented by confirmed codes and a flashing MIL.",
+  "vehicle": {
+    "make": "Lexus",
+    "series": "RX",
+    "modelYear": 2018,
+    "fuelType": "Gasoline"
+  },
+  "captureContext": {
+    "profile": "warmIdle",
+    "engineRunning": true,
+    "engineWarm": true,
+    "stationary": true,
+    "sampleDurationSeconds": 20,
+    "ambientTemperatureC": 18
+  },
+  "rawScanData": {
+    "values": {
+      "engineRPM": 1090,
+      "vehicleSpeed": 0,
+      "coolantTemperature": 90,
+      "calculatedEngineLoad": 42.3,
+      "throttlePosition": 17.2,
+      "shortTermFuelTrim": 11.7,
+      "longTermFuelTrim": 8.6,
+      "controlModuleVoltage": 13.8
+    },
+    "troubleCodes": [
+      {
+        "code": "P0300",
+        "summary": "Random or multiple cylinder misfire detected"
+      },
+      {
+        "code": "P0302",
+        "summary": "Cylinder 2 misfire detected"
+      }
+    ],
+    "troubleCodesAvailable": true,
+    "fuelSystemStatus": "Closed loop",
+    "freezeFrameAvailable": true
+  },
+  "obdEvidence": {
+    "milCommand": "flashing",
+    "codeStates": [
+      {
+        "code": "P0300",
+        "state": "confirmed"
+      },
+      {
+        "code": "P0302",
+        "state": "confirmed"
+      }
+    ],
+    "readinessMonitors": {
+      "misfire": "complete",
+      "fuelSystem": "complete",
+      "comprehensiveComponents": "complete",
+      "catalyst": "complete",
+      "oxygenSensor": "complete",
+      "evaporativeSystem": "complete"
+    }
+  },
+  "expectedInterpretation": {
+    "conditionBand": "urgent",
+    "scoreable": true,
+    "requiredFindings": [
+      "Flashing MIL and confirmed misfire codes require immediate attention",
+      "Avoid continued driving except as needed to reach safety"
+    ],
+    "caveats": [
+      "Generic OBD data does not identify the mechanical cause of the misfire"
+    ]
+  }
+}

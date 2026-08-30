@@ -198,8 +198,8 @@ struct VehicleHomeView: View {
                 Label(scanButtonTitle, systemImage: "waveform.path.ecg.rectangle")
             }
             .buttonStyle(CarPalPrimaryButtonStyle())
-            .disabled(adapterState == .searching)
-            .accessibilityHint("Starts the guided vehicle scan")
+            .disabled(!adapterState.isReadyForScan)
+            .accessibilityHint(scanAccessibilityHint)
 
             Button(action: onHistory) {
                 Label("View scan history", systemImage: "clock.arrow.circlepath")
@@ -230,6 +230,12 @@ struct VehicleHomeView: View {
 
     private var scanButtonTitle: String {
         latestAssessment.kind == .noAssessment ? "Start first scan" : "Scan vehicle"
+    }
+
+    private var scanAccessibilityHint: String {
+        adapterState.isReadyForScan
+            ? "Starts the guided vehicle scan"
+            : "Check and connect the adapter before scanning"
     }
 
     private var nextActionIcon: String {

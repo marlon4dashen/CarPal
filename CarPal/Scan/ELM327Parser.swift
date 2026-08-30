@@ -1,15 +1,15 @@
 import Foundation
 
 struct ELM327Parser: Sendable {
-    func responseBytes(_ response: String) -> [UInt8] {
+    nonisolated func responseBytes(_ response: String) -> [UInt8] {
         response.components(separatedBy: .newlines).flatMap(bytes(in:))
     }
 
-    func payload(for mode: UInt8, pid: UInt8, in response: String) -> [UInt8]? {
+    nonisolated func payload(for mode: UInt8, pid: UInt8, in response: String) -> [UInt8]? {
         payloads(for: mode, pid: pid, in: response).first
     }
 
-    func supportedPIDs(base: UInt8, response: String) -> Set<UInt8> {
+    nonisolated func supportedPIDs(base: UInt8, response: String) -> Set<UInt8> {
         var supported = Set<UInt8>()
         for payload in payloads(for: 0x01, pid: base, in: response) where payload.count >= 4 {
             for bit in 0..<32 where payload[bit / 8] & (1 << (7 - bit % 8)) != 0 {
@@ -19,7 +19,7 @@ struct ELM327Parser: Sendable {
         return supported
     }
 
-    func troubleCodes(from response: String) -> [DiagnosticTroubleCode] {
+    nonisolated func troubleCodes(from response: String) -> [DiagnosticTroubleCode] {
         var codes: [DiagnosticTroubleCode] = []
         for payload in modePayloads(responseMode: 0x43, in: response) {
             var index = 0
@@ -46,11 +46,11 @@ struct ELM327Parser: Sendable {
         return codes
     }
 
-    private func payloads(for mode: UInt8, pid: UInt8, in response: String) -> [[UInt8]] {
+    nonisolated private func payloads(for mode: UInt8, pid: UInt8, in response: String) -> [[UInt8]] {
         modePayloads(responseMode: mode + 0x40, pid: pid, in: response)
     }
 
-    private func modePayloads(responseMode: UInt8, pid: UInt8? = nil, in response: String) -> [[UInt8]] {
+    nonisolated private func modePayloads(responseMode: UInt8, pid: UInt8? = nil, in response: String) -> [[UInt8]] {
         response.components(separatedBy: .newlines).compactMap { line in
             let bytes = bytes(in: line)
             guard let marker = bytes.indices.first(where: { index in
@@ -63,7 +63,7 @@ struct ELM327Parser: Sendable {
         }
     }
 
-    private func bytes(in line: String) -> [UInt8] {
+    nonisolated private func bytes(in line: String) -> [UInt8] {
         let tokens = line.split { $0.isWhitespace || $0 == ":" }
         var bytes: [UInt8] = []
         for token in tokens {
@@ -82,7 +82,7 @@ struct ELM327Parser: Sendable {
         return bytes
     }
 
-    private func bytePairs(in token: Substring) -> [UInt8] {
+    nonisolated private func bytePairs(in token: Substring) -> [UInt8] {
         stride(from: 0, to: token.count, by: 2).compactMap { offset in
             let start = token.index(token.startIndex, offsetBy: offset)
             let end = token.index(start, offsetBy: 2)
@@ -90,7 +90,7 @@ struct ELM327Parser: Sendable {
         }
     }
 
-    private static func summary(for code: String) -> String {
+    nonisolated private static func summary(for code: String) -> String {
         switch code {
         case "P0171": "System too lean (bank 1)"
         case "P0172": "System too rich (bank 1)"

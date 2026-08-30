@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "engine-overheating",
+  "description": "Extreme coolant reading after warm-up with the engine running and vehicle stationary.",
+  "vehicle": {
+    "make": "Lexus",
+    "series": "RX",
+    "modelYear": 2018,
+    "fuelType": "Gasoline"
+  },
+  "captureContext": {
+    "profile": "warmIdle",
+    "engineRunning": true,
+    "engineWarm": true,
+    "stationary": true,
+    "sampleDurationSeconds": 20,
+    "ambientTemperatureC": 31
+  },
+  "rawScanData": {
+    "values": {
+      "engineRPM": 1045,
+      "vehicleSpeed": 0,
+      "coolantTemperature": 121,
+      "calculatedEngineLoad": 39.2,
+      "throttlePosition": 17.0,
+      "shortTermFuelTrim": 2.3,
+      "longTermFuelTrim": 4.7,
+      "controlModuleVoltage": 14.0
+    },
+    "troubleCodes": [],
+    "troubleCodesAvailable": true,
+    "fuelSystemStatus": "Closed loop",
+    "freezeFrameAvailable": false
+  },
+  "obdEvidence": {
+    "milCommand": "off",
+    "codeStates": [],
+    "readinessMonitors": {
+      "misfire": "complete",
+      "fuelSystem": "complete",
+      "comprehensiveComponents": "complete",
+      "catalyst": "complete",
+      "oxygenSensor": "complete",
+      "evaporativeSystem": "complete"
+    }
+  },
+  "expectedInterpretation": {
+    "conditionBand": "urgent",
+    "scoreable": true,
+    "requiredFindings": [
+      "Coolant temperature is extreme for this warm running profile",
+      "Stop driving when safe and verify the overheat condition"
+    ],
+    "caveats": [
+      "Corroborate with the vehicle warning display and physical diagnosis",
+      "The exact threshold must be validated per powertrain"
+    ]
+  }
+}

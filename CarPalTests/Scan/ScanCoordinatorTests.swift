@@ -7,7 +7,10 @@ struct ScanCoordinatorTests {
     @Test
     func scriptedScanCompletesAllSevenStagesInOrder() async {
         let mock = ScriptedMockAdapter(scenario: .serviceSoon, delay: .zero)
-        let coordinator = ScanCoordinator(adapterClient: mock, obdClient: mock)
+        let coordinator = ScanCoordinator(
+            sessionManager: AdapterSessionManager(client: mock),
+            diagnostics: mock
+        )
 
         await coordinator.begin(vehicleID: UUID())
 
@@ -26,7 +29,10 @@ struct ScanCoordinatorTests {
     @Test
     func connectionFailureStopsAtConnectingWithTypedContext() async {
         let mock = ScriptedMockAdapter(scenario: .connectionFailure, delay: .zero)
-        let coordinator = ScanCoordinator(adapterClient: mock, obdClient: mock)
+        let coordinator = ScanCoordinator(
+            sessionManager: AdapterSessionManager(client: mock),
+            diagnostics: mock
+        )
 
         await coordinator.begin(vehicleID: UUID())
 
@@ -46,7 +52,10 @@ struct ScanCoordinatorTests {
     @Test
     func incompleteDataCompletesTransportAndReturnsUnableToAssess() async {
         let mock = ScriptedMockAdapter(scenario: .incompleteData, delay: .zero)
-        let coordinator = ScanCoordinator(adapterClient: mock, obdClient: mock)
+        let coordinator = ScanCoordinator(
+            sessionManager: AdapterSessionManager(client: mock),
+            diagnostics: mock
+        )
 
         await coordinator.begin(vehicleID: UUID())
 

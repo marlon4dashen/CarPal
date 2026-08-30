@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "low-running-voltage",
+  "description": "Low control-module voltage while a conventional gasoline engine is running.",
+  "vehicle": {
+    "make": "Lexus",
+    "series": "NX",
+    "modelYear": 2020,
+    "fuelType": "Gasoline"
+  },
+  "captureContext": {
+    "profile": "warmIdle",
+    "engineRunning": true,
+    "engineWarm": true,
+    "stationary": true,
+    "sampleDurationSeconds": 30,
+    "ambientTemperatureC": 20
+  },
+  "rawScanData": {
+    "values": {
+      "engineRPM": 720,
+      "vehicleSpeed": 0,
+      "coolantTemperature": 89,
+      "calculatedEngineLoad": 24.0,
+      "throttlePosition": 15.9,
+      "shortTermFuelTrim": 2.0,
+      "longTermFuelTrim": 3.8,
+      "controlModuleVoltage": 11.7
+    },
+    "troubleCodes": [],
+    "troubleCodesAvailable": true,
+    "fuelSystemStatus": "Closed loop",
+    "freezeFrameAvailable": false
+  },
+  "obdEvidence": {
+    "milCommand": "off",
+    "codeStates": [],
+    "readinessMonitors": {
+      "misfire": "complete",
+      "fuelSystem": "complete",
+      "comprehensiveComponents": "complete",
+      "catalyst": "complete",
+      "oxygenSensor": "complete",
+      "evaporativeSystem": "complete"
+    }
+  },
+  "expectedInterpretation": {
+    "conditionBand": "attention",
+    "scoreable": true,
+    "requiredFindings": [
+      "Running voltage is unexpectedly low and should be rechecked",
+      "Check charging-system warnings and obtain a proper battery and charging-system test"
+    ],
+    "caveats": [
+      "Control-module voltage is not a battery state-of-health test",
+      "Charging behavior differs for hybrids and smart-charging systems"
+    ]
+  }
+}

@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 struct DiscoveredAdapter: Equatable, Sendable {
     let id: UUID
@@ -9,7 +10,7 @@ struct OBDSupportReport: Equatable, Sendable {
     let unavailableRequiredReadings: [String]
     let unavailableOptionalReadings: [String]
 
-    init(
+    nonisolated init(
         unavailableRequiredReadings: [String] = [],
         unavailableOptionalReadings: [String]
     ) {
@@ -18,16 +19,136 @@ struct OBDSupportReport: Equatable, Sendable {
     }
 }
 
+struct ELMCommandRequest: Equatable, Sendable {
+    let command: String
+    let timeout: Duration
+    let acceptsAnyResponse: Bool
+    let allowsNoData: Bool
+
+    nonisolated init(
+        _ command: String,
+        timeout: Duration = .seconds(4),
+        acceptsAnyResponse: Bool = false,
+        allowsNoData: Bool = false
+    ) {
+        self.command = command
+        self.timeout = timeout
+        self.acceptsAnyResponse = acceptsAnyResponse
+        self.allowsNoData = allowsNoData
+    }
+}
+
+@MainActor
 protocol BluetoothAdapterClient: Sendable {
+    var connectionState: AdapterConnectionState { get }
+
+    func setConnectionStateHandler(
+        _ handler: (@MainActor @Sendable (AdapterConnectionState) -> Void)?
+    )
     func discoverSupportedAdapter() async throws -> DiscoveredAdapter
     func connect(to adapter: DiscoveredAdapter) async throws
     func disconnect()
 }
 
-protocol OBDCommandClient: Sendable {
+@MainActor
+protocol ELMCommandExecuting: Sendable {
+    func execute(_ request: ELMCommandRequest) async throws -> String
+}
+
+protocol ScanDiagnosticCapabilities: Sendable {
     func initializeSession() async throws
     func discoverSupport() async throws -> OBDSupportReport
     func retrieveCoreData() async throws -> RawScanData
+}
+
+struct OBDCommandSession: Sendable {
+    private let executeRequest: @Sendable (ELMCommandRequest) async throws -> String
+
+    nonisolated init(executor: any ELMCommandExecuting) {
+        executeRequest = { request in
+            try await executor.execute(request)
+        }
+    }
+
+    nonisolated func execute(_ request: ELMCommandRequest) async throws -> String {
+        try await executeRequest(request)
+    }
+}
+
+actor OBDCommandScheduler {
+    private let session: OBDCommandSession
+    private var isLocked = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(executor: any ELMCommandExecuting) {
+        session = OBDCommandSession(executor: executor)
+    }
+
+    func execute(_ request: ELMCommandRequest) async throws -> String {
+        try await withExclusiveAccess { session in
+            try await session.execute(request)
+        }
+    }
+
+    func withExclusiveAccess<Result: Sendable>(
+        _ operation: @Sendable (OBDCommandSession) async throws -> Result
+    ) async throws -> Result {
+        await acquire()
+        defer { release() }
+        return try await operation(session)
+    }
+
+    private func acquire() async {
+        guard isLocked else {
+            isLocked = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    private func release() {
+        guard !waiters.isEmpty else {
+            isLocked = false
+            return
+        }
+        waiters.removeFirst().resume()
+    }
+}
+
+@MainActor
+@Observable
+final class AdapterSessionManager {
+    private let client: any BluetoothAdapterClient
+    private(set) var connectionState: AdapterConnectionState
+
+    init(client: any BluetoothAdapterClient) {
+        self.client = client
+        connectionState = client.connectionState
+        client.setConnectionStateHandler { [weak self] state in
+            self?.connectionState = state
+        }
+    }
+
+    func discoverSupportedAdapter() async throws -> DiscoveredAdapter {
+        try await client.discoverSupportedAdapter()
+    }
+
+    func connect(to adapter: DiscoveredAdapter) async throws {
+        try await client.connect(to: adapter)
+    }
+
+    @discardableResult
+    func prepareConnection() async throws -> DiscoveredAdapter {
+        let adapter = try await discoverSupportedAdapter()
+        try await connect(to: adapter)
+        return adapter
+    }
+
+    func disconnect() {
+        client.disconnect()
+    }
 }
 
 enum MockScanScenario: String, CaseIterable, Sendable {
@@ -38,20 +159,32 @@ enum MockScanScenario: String, CaseIterable, Sendable {
 }
 
 @MainActor
-final class ScriptedMockAdapter: BluetoothAdapterClient, OBDCommandClient, @unchecked Sendable {
+final class ScriptedMockAdapter: BluetoothAdapterClient, ScanDiagnosticCapabilities, @unchecked Sendable {
     private enum MockError: Error {
         case connectionInterrupted
     }
 
     private let scenario: MockScanScenario
     private let delay: Duration
+    private var stateHandler: (@MainActor @Sendable (AdapterConnectionState) -> Void)?
+    private(set) var connectionState: AdapterConnectionState = .notChecked {
+        didSet { stateHandler?(connectionState) }
+    }
 
     init(scenario: MockScanScenario = .serviceSoon, delay: Duration = .milliseconds(650)) {
         self.scenario = scenario
         self.delay = delay
     }
 
+    func setConnectionStateHandler(
+        _ handler: (@MainActor @Sendable (AdapterConnectionState) -> Void)?
+    ) {
+        stateHandler = handler
+        handler?(connectionState)
+    }
+
     func discoverSupportedAdapter() async throws -> DiscoveredAdapter {
+        connectionState = .searching
         try await pause()
         return DiscoveredAdapter(id: UUID(), name: "Veepeak OBDCheck BLE")
     }
@@ -59,11 +192,15 @@ final class ScriptedMockAdapter: BluetoothAdapterClient, OBDCommandClient, @unch
     func connect(to adapter: DiscoveredAdapter) async throws {
         try await pause()
         if scenario == .connectionFailure {
+            connectionState = .disconnected
             throw MockError.connectionInterrupted
         }
+        connectionState = .connected(name: adapter.name)
     }
 
-    func disconnect() {}
+    func disconnect() {
+        connectionState = .disconnected
+    }
 
     func initializeSession() async throws {
         try await pause()
@@ -111,5 +248,36 @@ final class ScriptedMockAdapter: BluetoothAdapterClient, OBDCommandClient, @unch
 
     private func pause() async throws {
         try await Task.sleep(for: delay)
+    }
+}
+
+@MainActor
+final class VehicleIntegration {
+    let sessionManager: AdapterSessionManager
+    let diagnostics: any ScanDiagnosticCapabilities
+
+    init(
+        adapterClient: any BluetoothAdapterClient,
+        diagnostics: any ScanDiagnosticCapabilities
+    ) {
+        sessionManager = AdapterSessionManager(client: adapterClient)
+        self.diagnostics = diagnostics
+    }
+
+    static func live() -> VehicleIntegration {
+        let client = CoreBluetoothOBDClient()
+        let scheduler = OBDCommandScheduler(executor: client)
+        return VehicleIntegration(
+            adapterClient: client,
+            diagnostics: StandardOBDDiagnosticService(scheduler: scheduler)
+        )
+    }
+
+    static func scripted(
+        scenario: MockScanScenario = .serviceSoon,
+        delay: Duration = .milliseconds(650)
+    ) -> VehicleIntegration {
+        let mock = ScriptedMockAdapter(scenario: scenario, delay: delay)
+        return VehicleIntegration(adapterClient: mock, diagnostics: mock)
     }
 }

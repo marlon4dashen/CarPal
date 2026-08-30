@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "id": "healthy-warm-idle",
+  "description": "Complete, internally consistent warm-idle sample with no OBD-detected fault.",
+  "vehicle": {
+    "make": "Lexus",
+    "series": "NX",
+    "modelYear": 2020,
+    "fuelType": "Gasoline"
+  },
+  "captureContext": {
+    "profile": "warmIdle",
+    "engineRunning": true,
+    "engineWarm": true,
+    "stationary": true,
+    "sampleDurationSeconds": 30,
+    "ambientTemperatureC": 22
+  },
+  "rawScanData": {
+    "values": {
+      "engineRPM": 712,
+      "vehicleSpeed": 0,
+      "coolantTemperature": 91,
+      "calculatedEngineLoad": 19.6,
+      "throttlePosition": 15.7,
+      "shortTermFuelTrim": 1.6,
+      "longTermFuelTrim": 3.1,
+      "controlModuleVoltage": 14.1
+    },
+    "troubleCodes": [],
+    "troubleCodesAvailable": true,
+    "fuelSystemStatus": "Closed loop",
+    "freezeFrameAvailable": false
+  },
+  "obdEvidence": {
+    "milCommand": "off",
+    "codeStates": [],
+    "readinessMonitors": {
+      "misfire": "complete",
+      "fuelSystem": "complete",
+      "comprehensiveComponents": "complete",
+      "catalyst": "complete",
+      "oxygenSensor": "complete",
+      "evaporativeSystem": "complete"
+    }
+  },
+  "expectedInterpretation": {
+    "conditionBand": "good",
+    "scoreable": true,
+    "requiredFindings": [
+      "No OBD-detected issue in the sampled systems"
+    ],
+    "caveats": [
+      "A clean OBD sample is not a comprehensive mechanical inspection"
+    ]
+  }
+}

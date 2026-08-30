@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "mil-on-p0171",
+  "description": "Confirmed lean-condition code with commanded-on MIL and freeze-frame evidence.",
+  "vehicle": {
+    "make": "Lexus",
+    "series": "NX",
+    "modelYear": 2020,
+    "fuelType": "Gasoline"
+  },
+  "captureContext": {
+    "profile": "warmIdle",
+    "engineRunning": true,
+    "engineWarm": true,
+    "stationary": true,
+    "sampleDurationSeconds": 30,
+    "ambientTemperatureC": 22
+  },
+  "rawScanData": {
+    "values": {
+      "engineRPM": 812,
+      "vehicleSpeed": 0,
+      "coolantTemperature": 94,
+      "calculatedEngineLoad": 31.2,
+      "throttlePosition": 16.5,
+      "shortTermFuelTrim": 24.2,
+      "longTermFuelTrim": 25.0,
+      "controlModuleVoltage": 13.9
+    },
+    "troubleCodes": [
+      {
+        "code": "P0171",
+        "summary": "System too lean (Bank 1)"
+      }
+    ],
+    "troubleCodesAvailable": true,
+    "fuelSystemStatus": "Closed loop",
+    "freezeFrameAvailable": true
+  },
+  "obdEvidence": {
+    "milCommand": "on",
+    "codeStates": [
+      {
+        "code": "P0171",
+        "state": "confirmed"
+      }
+    ],
+    "readinessMonitors": {
+      "misfire": "complete",
+      "fuelSystem": "complete",
+      "comprehensiveComponents": "complete",
+      "catalyst": "complete",
+      "oxygenSensor": "complete",
+      "evaporativeSystem": "complete"
+    }
+  },
+  "expectedInterpretation": {
+    "conditionBand": "serviceSoon",
+    "scoreable": true,
+    "requiredFindings": [
+      "The ECU confirmed P0171 and commanded the MIL on",
+      "Diagnostic inspection is required; do not infer a specific failed part"
+    ],
+    "caveats": [
+      "The DTC identifies a detected condition, not its root cause"
+    ]
+  }
+}

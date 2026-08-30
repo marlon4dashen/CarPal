@@ -3,6 +3,19 @@ import Testing
 @testable import CarPal
 
 struct VehicleHomePresentationTests {
+    @Test(
+        "Only a connected adapter permits scanning",
+        arguments: [
+            (AdapterConnectionState.notChecked, false),
+            (.disconnected, false),
+            (.searching, false),
+            (.connected(name: "Veepeak OBDCheck BLE"), true)
+        ]
+    )
+    func scanReadiness(state: AdapterConnectionState, expected: Bool) {
+        #expect(state.isReadyForScan == expected)
+    }
+
     @Test
     func uncheckedAdapterOffersAnExplicitConnectionCheck() {
         let presentation = AdapterStatusPresentation(state: .notChecked)

@@ -5,6 +5,13 @@ enum AdapterConnectionState: Equatable, Sendable {
     case disconnected
     case searching
     case connected(name: String)
+
+    var isReadyForScan: Bool {
+        if case .connected = self {
+            return true
+        }
+        return false
+    }
 }
 
 enum AssessmentStatus: String, Equatable, Sendable {

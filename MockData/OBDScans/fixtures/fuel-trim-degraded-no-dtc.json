@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "fuel-trim-degraded-no-dtc",
+  "description": "Warm-idle sample with sustained positive fuel correction but no stored DTC yet.",
+  "vehicle": {
+    "make": "Lexus",
+    "series": "NX",
+    "modelYear": 2020,
+    "fuelType": "Gasoline"
+  },
+  "captureContext": {
+    "profile": "warmIdle",
+    "engineRunning": true,
+    "engineWarm": true,
+    "stationary": true,
+    "sampleDurationSeconds": 30,
+    "ambientTemperatureC": 22
+  },
+  "rawScanData": {
+    "values": {
+      "engineRPM": 785,
+      "vehicleSpeed": 0,
+      "coolantTemperature": 93,
+      "calculatedEngineLoad": 28.4,
+      "throttlePosition": 16.1,
+      "shortTermFuelTrim": 18.8,
+      "longTermFuelTrim": 21.1,
+      "controlModuleVoltage": 14.0
+    },
+    "troubleCodes": [],
+    "troubleCodesAvailable": true,
+    "fuelSystemStatus": "Closed loop",
+    "freezeFrameAvailable": false
+  },
+  "obdEvidence": {
+    "milCommand": "off",
+    "codeStates": [],
+    "readinessMonitors": {
+      "misfire": "complete",
+      "fuelSystem": "complete",
+      "comprehensiveComponents": "complete",
+      "catalyst": "complete",
+      "oxygenSensor": "complete",
+      "evaporativeSystem": "complete"
+    }
+  },
+  "expectedInterpretation": {
+    "conditionBand": "attention",
+    "scoreable": true,
+    "requiredFindings": [
+      "Fuel correction is materially positive in this capture profile",
+      "Repeat the reading at warm idle and steady RPM before diagnosing a cause"
+    ],
+    "caveats": [
+      "A single generic fuel-trim snapshot cannot identify the failed component",
+      "Model-specific thresholds still require validation"
+    ]
+  }
+}

@@ -29,12 +29,14 @@ enum OBDTransportError: Error, CustomStringConvertible {
 
 @MainActor
 @Observable
-final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommandClient, @unchecked Sendable {
+final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, ELMCommandExecuting, @unchecked Sendable {
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "CarPal",
         category: "OBDTransport"
     )
-    private(set) var connectionState: AdapterConnectionState = .notChecked
+    private(set) var connectionState: AdapterConnectionState = .notChecked {
+        didSet { connectionStateHandler?(connectionState) }
+    }
 
     @ObservationIgnored private var central: CBCentralManager?
     @ObservationIgnored private var peripheral: CBPeripheral?
@@ -42,8 +44,7 @@ final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommand
     @ObservationIgnored private var notifyCharacteristic: CBCharacteristic?
     @ObservationIgnored private var discoveredCharacteristics: [CBCharacteristic] = []
     @ObservationIgnored private var pendingServices = Set<CBUUID>()
-    @ObservationIgnored private var supportedPIDs = Set<UInt8>()
-    @ObservationIgnored private let parser = ELM327Parser()
+    @ObservationIgnored private var connectionStateHandler: (@MainActor @Sendable (AdapterConnectionState) -> Void)?
 
     @ObservationIgnored private var powerContinuation: CheckedContinuation<Void, Error>?
     @ObservationIgnored private var discoveryContinuation: CheckedContinuation<DiscoveredAdapter, Error>?
@@ -53,6 +54,13 @@ final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommand
     @ObservationIgnored private var commandToken: UUID?
     @ObservationIgnored private var discoveryToken: UUID?
     @ObservationIgnored private var connectionToken: UUID?
+
+    func setConnectionStateHandler(
+        _ handler: (@MainActor @Sendable (AdapterConnectionState) -> Void)?
+    ) {
+        connectionStateHandler = handler
+        handler?(connectionState)
+    }
 
     func discoverSupportedAdapter() async throws -> DiscoveredAdapter {
         if isSerialConnectionReady, let peripheral {
@@ -114,88 +122,6 @@ final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommand
         connection?.resume(throwing: CancellationError())
     }
 
-    func prepareConnection() async throws {
-        let adapter = try await discoverSupportedAdapter()
-        try await connect(to: adapter)
-    }
-
-    func initializeSession() async throws {
-        _ = try await send("ATZ", timeout: .seconds(8), acceptsAnyResponse: true)
-        for command in ["ATE0", "ATL0", "ATS0", "ATH0", "ATSP0"] {
-            _ = try await send(command, acceptsAnyResponse: true)
-        }
-        let identity = try await send("ATI", acceptsAnyResponse: true)
-        guard identity.localizedCaseInsensitiveContains("ELM") || identity.localizedCaseInsensitiveContains("OBD") else {
-            throw OBDTransportError.invalidResponse(identity)
-        }
-    }
-
-    func discoverSupport() async throws -> OBDSupportReport {
-        var discovered = Set<UInt8>()
-        var bases: [UInt8] = [0x00]
-        while !bases.isEmpty {
-            let base = bases.removeFirst()
-            let response = try await send(String(format: "01%02X", base))
-            let page = parser.supportedPIDs(base: base, response: response)
-            discovered.formUnion(page)
-            let nextBase = base + 0x20
-            if page.contains(nextBase), nextBase <= 0x40 {
-                bases.append(nextBase)
-            }
-        }
-        supportedPIDs = discovered
-#if DEBUG
-        let pidList = discovered.sorted().map { String(format: "%02X", $0) }.joined(separator: ",")
-        Self.logger.debug("Supported Mode 01 PIDs: \(pidList, privacy: .public)")
-#endif
-
-        let optional: [(UInt8, String)] = [
-            (0x04, "Calculated engine load"), (0x0D, "Vehicle speed"),
-            (0x11, "Throttle position"), (0x06, "Short-term fuel trim"),
-            (0x07, "Long-term fuel trim")
-        ]
-        let required: [(UInt8, String)] = [
-            (0x0C, "Engine RPM"), (0x05, "Coolant temperature"),
-            (0x42, "Control-module voltage"), (0x03, "Fuel-system status")
-        ]
-        return OBDSupportReport(
-            unavailableRequiredReadings: required.compactMap { supportedPIDs.contains($0.0) ? nil : $0.1 },
-            unavailableOptionalReadings: optional.compactMap { supportedPIDs.contains($0.0) ? nil : $0.1 }
-        )
-    }
-
-    func retrieveCoreData() async throws -> RawScanData {
-        var values: [SensorMetric: Double] = [:]
-        try await readMetric(.engineRPM, pid: 0x0C, byteCount: 2, into: &values) {
-            (Double($0[0]) * 256 + Double($0[1])) / 4
-        }
-        try await readMetric(.vehicleSpeed, pid: 0x0D, into: &values) { Double($0[0]) }
-        try await readMetric(.coolantTemperature, pid: 0x05, into: &values) { Double($0[0]) - 40 }
-        try await readMetric(.calculatedEngineLoad, pid: 0x04, into: &values) { Double($0[0]) * 100 / 255 }
-        try await readMetric(.throttlePosition, pid: 0x11, into: &values) { Double($0[0]) * 100 / 255 }
-        try await readMetric(.shortTermFuelTrim, pid: 0x06, into: &values) { (Double($0[0]) - 128) * 100 / 128 }
-        try await readMetric(.longTermFuelTrim, pid: 0x07, into: &values) { (Double($0[0]) - 128) * 100 / 128 }
-        try await readMetric(.controlModuleVoltage, pid: 0x42, byteCount: 2, into: &values) {
-            (Double($0[0]) * 256 + Double($0[1])) / 1_000
-        }
-
-        let dtcResponse = try await send("03", allowsNoData: true)
-        let troubleCodes = isNoData(dtcResponse) ? [] : parser.troubleCodes(from: dtcResponse)
-        let fuelSystemStatus = try await readFuelSystemStatus()
-        let freezeFrameResponse = try? await send("0202", allowsNoData: true)
-        let freezeFrameAvailable = freezeFrameResponse.map {
-            !isNoData($0) && parser.payload(for: 0x02, pid: 0x02, in: $0) != nil
-        } ?? false
-
-        return RawScanData(
-            values: values,
-            troubleCodes: troubleCodes,
-            troubleCodesAvailable: true,
-            fuelSystemStatus: fuelSystemStatus,
-            freezeFrameAvailable: freezeFrameAvailable
-        )
-    }
-
     private func prepareCentral() -> CBCentralManager {
         if let central { return central }
         let manager = CBCentralManager(delegate: self, queue: .main)
@@ -217,39 +143,8 @@ final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommand
         try await withCheckedThrowingContinuation { powerContinuation = $0 }
     }
 
-    private func readMetric(
-        _ metric: SensorMetric,
-        pid: UInt8,
-        byteCount: Int = 1,
-        into values: inout [SensorMetric: Double],
-        transform: ([UInt8]) -> Double
-    ) async throws {
-        guard supportedPIDs.contains(pid) else { return }
-        let response = try await send(String(format: "01%02X", pid), allowsNoData: true)
-        guard let payload = parser.payload(for: 0x01, pid: pid, in: response), payload.count >= byteCount else { return }
-        values[metric] = transform(Array(payload.prefix(byteCount)))
-    }
-
-    private func readFuelSystemStatus() async throws -> String? {
-        guard supportedPIDs.contains(0x03) else { return nil }
-        let response = try await send("0103", allowsNoData: true)
-        guard let status = parser.payload(for: 0x01, pid: 0x03, in: response)?.first else { return nil }
-        return switch status {
-        case 1: "Open loop: insufficient engine temperature"
-        case 2: "Closed loop"
-        case 4: "Open loop: engine load or deceleration"
-        case 8: "Open loop: system failure"
-        case 16: "Closed loop with oxygen-sensor fault"
-        default: "Status reported (0x\(String(format: "%02X", status)))"
-        }
-    }
-
-    private func send(
-        _ command: String,
-        timeout: Duration = .seconds(4),
-        acceptsAnyResponse: Bool = false,
-        allowsNoData: Bool = false
-    ) async throws -> String {
+    func execute(_ request: ELMCommandRequest) async throws -> String {
+        let command = request.command
         guard commandContinuation == nil,
               let peripheral,
               let writeCharacteristic else {
@@ -268,7 +163,7 @@ final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommand
             commandContinuation = continuation
             peripheral.writeValue(data, for: writeCharacteristic, type: writeType)
             Task { @MainActor [weak self] in
-                try? await Task.sleep(for: timeout)
+                try? await Task.sleep(for: request.timeout)
                 guard self?.commandToken == token else { return }
                 self?.failPendingCommand(with: OBDTransportError.commandTimedOut(command))
             }
@@ -276,12 +171,12 @@ final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommand
 
         let cleaned = clean(response, echo: command)
 #if DEBUG
-        Self.logger.debug("ELM \(command, privacy: .public) -> \(cleaned, privacy: .public)")
+        Self.logger.debug("ELM command \(command, privacy: .public) returned \(cleaned.utf8.count) bytes")
 #endif
-        if isRejected(cleaned) || (!allowsNoData && isNoData(cleaned)) {
+        if isRejected(cleaned) || (!request.allowsNoData && isNoData(cleaned)) {
             throw OBDTransportError.adapterRejectedCommand(cleaned)
         }
-        if !acceptsAnyResponse && cleaned.isEmpty {
+        if !request.acceptsAnyResponse && cleaned.isEmpty {
             throw OBDTransportError.invalidResponse(response)
         }
         return cleaned
@@ -367,7 +262,6 @@ final class CoreBluetoothOBDClient: NSObject, BluetoothAdapterClient, OBDCommand
         notifyCharacteristic = nil
         discoveredCharacteristics = []
         pendingServices = []
-        supportedPIDs = []
     }
 
     private func selectSerialCharacteristics() throws {

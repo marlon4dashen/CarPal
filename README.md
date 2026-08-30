@@ -45,6 +45,20 @@ xcodebuild -project CarPal.xcodeproj \
   test
 ```
 
+### Simulator Mock Scan
+
+In **Product > Scheme > Edit Scheme > Run > Arguments**, enable these as two
+separate launch arguments:
+
+```text
+-seedPreviewVehicle
+-useMockAdapter
+```
+
+Add `-startMockScan` to open and run the scripted scan immediately. Keep the
+leading hyphen on every argument; without it, CarPal uses the live Bluetooth
+client and waits for a physical adapter.
+
 ## Current Limitations
 
 - The MVP supports one vehicle and one adapter family.

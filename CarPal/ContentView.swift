@@ -70,7 +70,9 @@ private struct VehicleAppFlow: View {
     @State private var presentedDestination: PlaceholderDestination?
     @State private var showsEditVehicle = false
     @State private var persistenceError: String?
-    @State private var liveAdapter = CoreBluetoothOBDClient()
+    @State private var vehicleIntegration = DebugLaunchConfiguration.usesMockAdapter
+        ? VehicleIntegration.scripted()
+        : VehicleIntegration.live()
 
     private let validator = VehicleDraftValidator()
 
@@ -83,7 +85,7 @@ private struct VehicleAppFlow: View {
                         adapterState: adapterState,
                         assessment: latestAssessment,
                         onCheckAdapter: checkAdapterConnection,
-                        onScan: { path.append(.scan) },
+                        onScan: startScan,
                         onEdit: { showsEditVehicle = true },
                         onHistory: { path.append(.history) },
                         onSettings: { presentedDestination = .settings }
@@ -164,29 +166,32 @@ private struct VehicleAppFlow: View {
     }
 
     private var adapterState: AdapterConnectionState {
-        DebugLaunchConfiguration.usesMockAdapter
-            ? .connected(name: "Veepeak OBDCheck BLE (Mock)")
-            : liveAdapter.connectionState
+        vehicleIntegration.sessionManager.connectionState
     }
 
     private var scanCoordinator: ScanCoordinator {
-        if DebugLaunchConfiguration.usesMockAdapter {
-            return ScanCoordinator(scenario: .serviceSoon)
-        }
-        return ScanCoordinator(adapterClient: liveAdapter, obdClient: liveAdapter)
+        ScanCoordinator(
+            sessionManager: vehicleIntegration.sessionManager,
+            diagnostics: vehicleIntegration.diagnostics
+        )
     }
 
     private func checkAdapterConnection() {
-        guard liveAdapter.connectionState != .searching else { return }
+        guard adapterState != .searching else { return }
         Task {
             do {
-                try await liveAdapter.prepareConnection()
+                try await vehicleIntegration.sessionManager.prepareConnection()
             } catch is CancellationError {
                 // A scan can take ownership of discovery without showing a stale failure.
             } catch {
                 // The observable adapter state already presents the actionable failure.
             }
         }
+    }
+
+    private func startScan() {
+        guard adapterState.isReadyForScan else { return }
+        path.append(.scan)
     }
 
     private var latestAssessment: AssessmentPreview? {

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://carpal.local/schemas/obd-scan-fixture-v1.json",
+  "title": "CarPal OBD scan fixture",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "description",
+    "vehicle",
+    "captureContext",
+    "rawScanData",
+    "obdEvidence",
+    "expectedInterpretation"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "description": { "type": "string", "minLength": 1 },
+    "vehicle": {
+      "type": "object",
+      "required": ["make", "series", "modelYear", "fuelType"],
+      "properties": {
+        "make": { "type": "string" },
+        "series": { "enum": ["NX", "RX"] },
+        "modelYear": { "type": "integer", "minimum": 2015 },
+        "fuelType": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "captureContext": {
+      "type": "object",
+      "required": ["profile", "engineRunning", "engineWarm", "stationary", "sampleDurationSeconds"],
+      "properties": {
+        "profile": { "enum": ["warmIdle", "coldStart", "steadyRPM", "unknown"] },
+        "engineRunning": { "type": "boolean" },
+        "engineWarm": { "type": "boolean" },
+        "stationary": { "type": "boolean" },
+        "sampleDurationSeconds": { "type": "integer", "minimum": 0 },
+        "ambientTemperatureC": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "rawScanData": { "$ref": "#/$defs/rawScanData" },
+    "obdEvidence": { "$ref": "#/$defs/obdEvidence" },
+    "expectedInterpretation": { "$ref": "#/$defs/expectedInterpretation" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "rawScanData": {
+      "type": "object",
+      "required": ["values", "troubleCodes", "troubleCodesAvailable", "fuelSystemStatus", "freezeFrameAvailable"],
+      "properties": {
+        "values": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "engineRPM",
+              "vehicleSpeed",
+              "coolantTemperature",
+              "calculatedEngineLoad",
+              "throttlePosition",
+              "shortTermFuelTrim",
+              "longTermFuelTrim",
+              "controlModuleVoltage"
+            ]
+          },
+          "additionalProperties": { "type": "number" }
+        },
+        "troubleCodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "summary"],
+            "properties": {
+              "code": { "type": "string", "pattern": "^[PBCU][0-9A-F]{4}$" },
+              "summary": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "troubleCodesAvailable": { "type": "boolean" },
+        "fuelSystemStatus": { "type": ["string", "null"] },
+        "freezeFrameAvailable": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "obdEvidence": {
+      "type": "object",
+      "required": ["milCommand", "codeStates", "readinessMonitors"],
+      "properties": {
+        "milCommand": { "enum": ["off", "on", "flashing", "unknown"] },
+        "codeStates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "state"],
+            "properties": {
+              "code": { "type": "string", "pattern": "^[PBCU][0-9A-F]{4}$" },
+              "state": { "enum": ["pending", "confirmed", "permanent"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "readinessMonitors": {
+          "type": "object",
+          "additionalProperties": { "enum": ["complete", "incomplete", "unsupported", "unknown"] }
+        }
+      },
+      "additionalProperties": false
+    },
+    "expectedInterpretation": {
+      "type": "object",
+      "required": ["conditionBand", "scoreable", "requiredFindings", "caveats"],
+      "properties": {
+        "conditionBand": { "enum": ["good", "attention", "serviceSoon", "urgent", "unableToAssess"] },
+        "scoreable": { "type": "boolean" },
+        "requiredFindings": { "type": "array", "items": { "type": "string" } },
+        "caveats": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

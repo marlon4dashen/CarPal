@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "incomplete-after-reset",
+  "description": "Recent reset with incomplete monitors and too little engine-state data for assessment.",
+  "vehicle": {
+    "make": "Lexus",
+    "series": "RX",
+    "modelYear": 2023,
+    "fuelType": "Gasoline"
+  },
+  "captureContext": {
+    "profile": "unknown",
+    "engineRunning": false,
+    "engineWarm": false,
+    "stationary": true,
+    "sampleDurationSeconds": 5,
+    "ambientTemperatureC": 20
+  },
+  "rawScanData": {
+    "values": {
+      "vehicleSpeed": 0,
+      "controlModuleVoltage": 12.4
+    },
+    "troubleCodes": [],
+    "troubleCodesAvailable": true,
+    "fuelSystemStatus": null,
+    "freezeFrameAvailable": false
+  },
+  "obdEvidence": {
+    "milCommand": "off",
+    "codeStates": [],
+    "readinessMonitors": {
+      "misfire": "complete",
+      "fuelSystem": "complete",
+      "comprehensiveComponents": "complete",
+      "catalyst": "incomplete",
+      "oxygenSensor": "incomplete",
+      "evaporativeSystem": "incomplete"
+    }
+  },
+  "expectedInterpretation": {
+    "conditionBand": "unableToAssess",
+    "scoreable": false,
+    "requiredFindings": [
+      "Required engine-state readings are unavailable",
+      "Multiple readiness monitors have not completed"
+    ],
+    "caveats": [
+      "Incomplete readiness may follow a battery disconnect or code clear and is not itself a fault",
+      "An empty DTC list is not positive evidence for monitors that have not run"
+    ]
+  }
+}

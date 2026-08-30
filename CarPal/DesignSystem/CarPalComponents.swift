@@ -67,15 +67,24 @@ struct CarPalMetric: View {
 }
 
 struct CarPalPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.carPalBody.weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(.white.opacity(isEnabled ? 1 : 0.72))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
-            .background(configuration.isPressed ? CarPalColor.accentPressed : CarPalColor.accent)
+            .background(backgroundColor(isPressed: configuration.isPressed))
             .clipShape(RoundedRectangle(cornerRadius: CarPalRadius.control, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .scaleEffect(configuration.isPressed && isEnabled ? 0.985 : 1)
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        guard isEnabled else {
+            return CarPalColor.secondaryInk.opacity(0.48)
+        }
+        return isPressed ? CarPalColor.accentPressed : CarPalColor.accent
     }
 }
 

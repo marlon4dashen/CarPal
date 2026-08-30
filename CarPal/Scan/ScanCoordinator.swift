@@ -4,8 +4,8 @@ import Observation
 @MainActor
 @Observable
 final class ScanCoordinator {
-    private let adapterClient: any BluetoothAdapterClient
-    private let obdClient: any OBDCommandClient
+    private let sessionManager: AdapterSessionManager
+    private let diagnostics: any ScanDiagnosticCapabilities
     private let normalizer: ScanNormalizer
     private let assessmentEngine: HealthAssessmentEngine
 
@@ -18,20 +18,15 @@ final class ScanCoordinator {
     private(set) var hasCollectedData = false
 
     init(
-        adapterClient: any BluetoothAdapterClient,
-        obdClient: any OBDCommandClient,
+        sessionManager: AdapterSessionManager,
+        diagnostics: any ScanDiagnosticCapabilities,
         normalizer: ScanNormalizer = ScanNormalizer(),
         assessmentEngine: HealthAssessmentEngine = HealthAssessmentEngine()
     ) {
-        self.adapterClient = adapterClient
-        self.obdClient = obdClient
+        self.sessionManager = sessionManager
+        self.diagnostics = diagnostics
         self.normalizer = normalizer
         self.assessmentEngine = assessmentEngine
-    }
-
-    convenience init(scenario: MockScanScenario = .serviceSoon) {
-        let mock = ScriptedMockAdapter(scenario: scenario)
-        self.init(adapterClient: mock, obdClient: mock)
     }
 
     var activeStage: ScanStage? {
@@ -55,22 +50,22 @@ final class ScanCoordinator {
 
         do {
             setActive(.searching)
-            let adapter = try await adapterClient.discoverSupportedAdapter()
+            let adapter = try await sessionManager.discoverSupportedAdapter()
             try ensureRunning()
             setFinished(.searching, detail: "Found \(adapter.name)")
 
             setActive(.connecting)
-            try await adapterClient.connect(to: adapter)
+            try await sessionManager.connect(to: adapter)
             try ensureRunning()
             setFinished(.connecting, detail: "Connection is stable")
 
             setActive(.initializing)
-            try await obdClient.initializeSession()
+            try await diagnostics.initializeSession()
             try ensureRunning()
             setFinished(.initializing, detail: "Vehicle protocol detected")
 
             setActive(.supportCheck)
-            let support = try await obdClient.discoverSupport()
+            let support = try await diagnostics.discoverSupport()
             try ensureRunning()
             if !support.unavailableRequiredReadings.isEmpty {
                 setLimited(
@@ -87,7 +82,7 @@ final class ScanCoordinator {
             }
 
             setActive(.dataRetrieval)
-            let raw = try await obdClient.retrieveCoreData()
+            let raw = try await diagnostics.retrieveCoreData()
             try ensureRunning()
             hasCollectedData = true
             setFinished(.dataRetrieval, detail: "Core scan data retrieved")
@@ -123,7 +118,7 @@ final class ScanCoordinator {
 
     func cancel() {
         isRunning = false
-        adapterClient.disconnect()
+        sessionManager.disconnect()
     }
 
     private func reset() {
