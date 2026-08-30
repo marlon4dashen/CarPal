@@ -1,0 +1,28 @@
+{
+  "Count": 1,
+  "Message": "Results returned successfully",
+  "SearchCriteria": "VIN",
+  "Results": [
+    {
+      "VIN": "JTJYARBZ0L2000001",
+      "ModelYear": "2020",
+      "Make": "LEXUS",
+      "Model": "NX",
+      "Series": "NX 300",
+      "VehicleType": "MULTIPURPOSE PASSENGER VEHICLE (MPV)",
+      "BodyClass": "Sport Utility Vehicle (SUV)/Multi-Purpose Vehicle (MPV)",
+      "EngineModel": "8AR-FTS",
+      "EngineConfiguration": "In-Line",
+      "DisplacementL": "2.0",
+      "EngineCylinders": "4",
+      "FuelTypePrimary": "Gasoline",
+      "FuelTypeSecondary": "",
+      "DriveType": "4WD/4-Wheel Drive/4x4",
+      "TransmissionStyle": "Automatic",
+      "Manufacturer": "TOYOTA MOTOR NORTH AMERICA, INC",
+      "PlantCountry": "JAPAN",
+      "ErrorCode": "0",
+      "ErrorText": "0 - VIN decoded clean. Check Digit (9th position) is correct"
+    }
+  ]
+}

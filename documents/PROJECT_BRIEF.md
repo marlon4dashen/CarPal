@@ -136,7 +136,7 @@ The candidate profile may include:
 * Trim/package and OEM exterior colour when known or confirmed by the user
 * Licence plate and current mileage when entered by the user
 
-Every profile attribute must retain its source and confidence independently.
+Every profile attribute must retain its source and confirmation state independently.
 Supported sources include `OBD`, `VIN_DECODER`, `OEM_DATABASE`, and `USER`.
 CarPal must not imply that VIN decoding uniquely identifies trim, packages,
 colour, or every engine/drivetrain configuration when it does not.
@@ -348,7 +348,7 @@ should describe:
   constraints
 
 The resolver should use normalized, source-attributed vehicle identity and
-return the selected profile ID/version, match confidence, supported scan types,
+ return the selected profile ID/version, supported scan types,
 collection plan, and user-facing limitations. Ambiguous identity must not be
 silently promoted to a Health Scan profile.
 
@@ -617,7 +617,7 @@ The MVP is successful when all of the following are true:
 * CarPal attempts OBD VIN identification first and provides camera, manual VIN,
   and catalog-backed fallbacks.
 * The user can confirm or correct a candidate profile, and each attribute keeps
-  its source and confidence.
+  its source and confirmation state.
 * The app can repeatedly connect to the Veepeak OBDCheck BLE on the target setup.
 * A user can access read-only DTC, live-data, freeze-frame, readiness, and known
   Mode `$06` tools without entering an intelligent scan workflow.
@@ -786,7 +786,7 @@ The backend should be responsible for:
 
 * Creating, resuming, and finalizing Quick Scan and Health Scan sessions
 * Decoding VINs through a replaceable vehicle-data provider and returning
-  attribute-level source/confidence
+  attribute-level source and confirmation state
 * Owning the versioned vehicle diagnostic profile registry and resolving scan
   eligibility, collection plans, rule sets, and limitations from normalized
   vehicle identity

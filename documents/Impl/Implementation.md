@@ -36,7 +36,8 @@ The following decisions are fixed for the MVP:
 * The backend, not the iPhone, calls vPIC and normalizes provider-specific data.
 * A missing VIN-decoder value means unknown. It must not be converted into a
   guessed value or interpreted as equipment being absent.
-* Vehicle attributes retain value, source, confidence, and confirmation state.
+* Vehicle attributes retain value, source, and confirmation state. Numerical
+  identity confidence is omitted until it can be supported by measured data.
 * The saved vehicle profile remains local-first in SwiftData.
 * The main landing page keeps the existing vehicle card and presents two
   workspaces: `Scans` and `Diagnostic Tools`.
@@ -154,7 +155,6 @@ carry policy, rule-set, and diagnostic-profile versions where applicable.
 struct VehicleAttribute<Value: Codable & Sendable>: Codable, Sendable {
     let value: Value?
     let source: AttributeSource
-    let confidence: Double
     let requiresConfirmation: Bool
 }
 
@@ -524,7 +524,7 @@ The backend owns:
 
 * Versioned request and response schemas
 * VIN decode provider abstraction and vPIC integration
-* Provider-field normalization, warnings, provenance, and confidence
+* Provider-field normalization, warnings, provenance, and confirmation state
 * Vehicle diagnostic profile registry and resolver
 * DTC knowledge and known Mode 06 interpretation data
 * Quick Scan bundle validation and deterministic findings
@@ -657,11 +657,11 @@ Response:
 {
   "schema_version": "1",
   "candidate": {
-    "make": {"value": "Lexus", "source": "VIN_DECODER", "confidence": 0.98},
-    "model": {"value": "NX 300", "source": "VIN_DECODER", "confidence": 0.95},
-    "model_year": {"value": 2020, "source": "USER", "confidence": 1.0},
-    "fuel_type": {"value": "Gasoline", "source": "VIN_DECODER", "confidence": 0.9},
-    "drive_type": {"value": null, "source": "VIN_DECODER", "confidence": 0.0}
+    "make": {"value": "Lexus", "source": "VIN_DECODER", "requires_confirmation": false},
+    "model": {"value": "NX 300", "source": "VIN_DECODER", "requires_confirmation": false},
+    "model_year": {"value": 2020, "source": "USER", "requires_confirmation": false},
+    "fuel_type": {"value": "Gasoline", "source": "VIN_DECODER", "requires_confirmation": false},
+    "drive_type": {"value": null, "source": "VIN_DECODER", "requires_confirmation": true}
   },
   "decode_warnings": ["Drive type was not encoded or available"],
   "eligibility": {
@@ -737,7 +737,7 @@ acknowledges accepted ranges so the phone can discard them from its retry buffer
 * Registration explains why the adapter is required before asking for details.
 * Connection state comes from the transport layer, never from optimistic UI.
 * Unknown values remain visibly unknown and editable.
-* Source/confidence supports trust without overwhelming the default view.
+* Source and confirmation state support trust without overwhelming the default view.
 * Tools answer a specific technical question; scans answer "How is my car doing?"
 * Missing capability is not presented as a vehicle defect.
 * Every backend or transport failure names the failed operation and recovery.
@@ -877,6 +877,9 @@ system, and vehicle card. Refactor them behind the new contracts as later slices
 land.
 
 ### Milestone 4: Contracts and backend foundation
+
+Status: implemented. The backend is database-free in this milestone; Health
+Scan session state and rules remain scheduled for later milestones.
 
 * Create the backend project structure with FastAPI and Pydantic.
 * Define canonical vehicle identity, provenance, eligibility, observation, and

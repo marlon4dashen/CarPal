@@ -13,5 +13,15 @@ build/
 .build/
 .swiftpm/
 
+# Python backend
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
 # macOS
 .DS_Store

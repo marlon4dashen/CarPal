@@ -1,0 +1,30 @@
+{
+  "schema_version": "1",
+  "supported_adapters": [
+    "veepeak-obdcheck-ble"
+  ],
+  "profiles": [
+    {
+      "id": "lexus-nx300-2020-na",
+      "version": "1.0.0",
+      "state": "enabled",
+      "match": {
+        "makes": ["Lexus"],
+        "models": ["NX 300", "NX300"],
+        "years": [2020],
+        "engine_models": ["8AR-FTS"],
+        "fuel_types": ["Gasoline"],
+        "markets": ["CA", "US"]
+      },
+      "health_scan": {
+        "enabled": true,
+        "collection_plan": "nx300-2020-v1",
+        "rule_set": "nx300-2020-rules-v1"
+      },
+      "limitations": [
+        "Assessment is limited to standard OBD-accessible systems.",
+        "This pilot profile does not imply complete OEM threshold validation."
+      ]
+    }
+  ]
+}
