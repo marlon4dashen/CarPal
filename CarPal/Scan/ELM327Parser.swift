@@ -61,33 +61,6 @@ struct ELM327Parser: Sendable {
         }.filter { !$0.isEmpty }
     }
 
-    nonisolated func troubleCodes(from response: String) -> [DiagnosticTroubleCode] {
-        var codes: [DiagnosticTroubleCode] = []
-        for payload in modePayloads(responseMode: 0x43, in: response) {
-            var index = 0
-            while index + 1 < payload.count {
-                let high = payload[index]
-                let low = payload[index + 1]
-                guard high != 0 || low != 0 else { break }
-
-                let families = ["P", "C", "B", "U"]
-                let family = families[Int(high >> 6)]
-                let value = (UInt16(high & 0x3F) << 8) | UInt16(low)
-                let code = String(format: "%@%04X", family, value)
-                if !codes.contains(where: { $0.code == code }) {
-                    codes.append(
-                        DiagnosticTroubleCode(
-                            code: code,
-                            summary: Self.summary(for: code)
-                        )
-                    )
-                }
-                index += 2
-            }
-        }
-        return codes
-    }
-
     nonisolated private func payloads(for mode: UInt8, pid: UInt8, in response: String) -> [[UInt8]] {
         modePayloads(responseMode: mode + 0x40, pid: pid, in: response)
     }
@@ -132,13 +105,4 @@ struct ELM327Parser: Sendable {
         }
     }
 
-    nonisolated private static func summary(for code: String) -> String {
-        switch code {
-        case "P0171": "System too lean (bank 1)"
-        case "P0172": "System too rich (bank 1)"
-        case "P0300": "Random or multiple cylinder misfire detected"
-        case "P0420": "Catalyst system efficiency below threshold (bank 1)"
-        default: "Vehicle-reported diagnostic trouble code"
-        }
-    }
 }

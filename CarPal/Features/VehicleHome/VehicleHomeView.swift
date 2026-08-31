@@ -8,7 +8,11 @@ struct VehicleHomeView: View {
     let onScan: () -> Void
     let onEdit: () -> Void
     let onHistory: () -> Void
+    let onTroubleCodes: () -> Void
+    let onReadiness: () -> Void
     let onSettings: () -> Void
+
+    @State private var workspace: VehicleHomeWorkspace = .scans
 
     private var adapter: AdapterStatusPresentation {
         AdapterStatusPresentation(state: adapterState)
@@ -27,8 +31,8 @@ struct VehicleHomeView: View {
                     VehicleHeroView(vehicle: vehicle)
                     vehicleIdentity
                     adapterCard
-                    assessmentCard
-                    actions
+                    workspacePicker
+                    workspaceContent
                 }
                 .padding(.horizontal, CarPalSpacing.medium)
                 .padding(.top, CarPalSpacing.small)
@@ -47,6 +51,105 @@ struct VehicleHomeView: View {
                 .accessibilityLabel("Settings")
             }
         }
+    }
+
+    private var workspacePicker: some View {
+        Picker("Workspace", selection: $workspace) {
+            ForEach(VehicleHomeWorkspace.allCases) { workspace in
+                Text(workspace.title).tag(workspace)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityHint("Switches between vehicle scans and standalone diagnostic tools")
+    }
+
+    @ViewBuilder
+    private var workspaceContent: some View {
+        switch workspace {
+        case .scans:
+            assessmentCard
+            actions
+        case .diagnosticTools:
+            diagnosticTools
+        }
+    }
+
+    private var diagnosticTools: some View {
+        VStack(spacing: CarPalSpacing.small) {
+            if !adapterState.isReadyForScan {
+                CarPalCard {
+                    Label("Connect the adapter to use tools", systemImage: "bolt.horizontal.circle")
+                        .font(.carPalBody.weight(.bold))
+                    Text("Standalone tools read the vehicle directly and become available after the vehicle session is ready.")
+                        .font(.carPalBody)
+                        .foregroundStyle(CarPalColor.secondaryInk)
+                        .padding(.top, CarPalSpacing.xSmall)
+                }
+            }
+
+            diagnosticToolButton(
+                title: "Trouble Codes",
+                detail: "Read confirmed, pending, and permanent code states",
+                systemImage: "exclamationmark.bubble.fill",
+                action: onTroubleCodes
+            )
+            diagnosticToolButton(
+                title: "Emissions Readiness",
+                detail: "Check the MIL and supported monitor completion",
+                systemImage: "checklist.checked",
+                action: onReadiness
+            )
+
+            Text("Freeze frame, live data, and ECU self-tests arrive in Milestone 7.")
+                .font(.caption)
+                .foregroundStyle(CarPalColor.secondaryInk)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, CarPalSpacing.xSmall)
+                .padding(.top, CarPalSpacing.xSmall)
+        }
+    }
+
+    private func diagnosticToolButton(
+        title: String,
+        detail: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            CarPalCard {
+                HStack(spacing: CarPalSpacing.medium) {
+                    Image(systemName: systemImage)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(CarPalColor.accent)
+                        .frame(width: 42, height: 42)
+                        .background(CarPalColor.accent.opacity(0.1))
+                        .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: CarPalSpacing.xSmall) {
+                        Text(title)
+                            .font(.carPalBody.weight(.bold))
+                            .foregroundStyle(CarPalColor.ink)
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(CarPalColor.secondaryInk)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Spacer(minLength: CarPalSpacing.small)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(CarPalColor.secondaryInk)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(!adapterState.isReadyForScan)
+        .opacity(adapterState.isReadyForScan ? 1 : 0.56)
+        .accessibilityHint(
+            adapterState.isReadyForScan
+                ? "Opens the standalone \(title) tool"
+                : "Connect the adapter before opening this tool"
+        )
     }
 
     private var vehicleIdentity: some View {
@@ -315,8 +418,24 @@ struct VehicleHomeView_Previews: PreviewProvider {
                 onScan: {},
                 onEdit: {},
                 onHistory: {},
+                onTroubleCodes: {},
+                onReadiness: {},
                 onSettings: {}
             )
+        }
+    }
+}
+
+enum VehicleHomeWorkspace: String, CaseIterable, Identifiable, Sendable {
+    case scans
+    case diagnosticTools
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .scans: "Scans"
+        case .diagnosticTools: "Diagnostic Tools"
         }
     }
 }

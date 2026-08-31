@@ -19,9 +19,14 @@ from carpal_backend.contracts import (
     ErrorDetail,
     ErrorResponse,
     HealthResponse,
+    ReadinessParseRequest,
+    ReadinessParseResponse,
+    TroubleCodeParseRequest,
+    TroubleCodeParseResponse,
     VehicleDecodeRequest,
     VehicleDecodeResponse,
 )
+from carpal_backend.diagnostics import parse_readiness, parse_trouble_codes
 from carpal_backend.errors import ServiceError
 from carpal_backend.profiles import DiagnosticProfileRegistry
 from carpal_backend.vehicle_identification import VehicleIdentificationService
@@ -101,6 +106,32 @@ def _router() -> APIRouter:
     ) -> DiagnosticProfileResolveResponse:
         service: VehicleIdentificationService = request.app.state.vehicle_identification
         return service.resolve(payload)
+
+    @router.post(
+        "/v1/diagnostics/trouble-codes/parse",
+        response_model=TroubleCodeParseResponse,
+        responses={422: {"model": ErrorResponse}},
+        tags=["diagnostics"],
+    )
+    async def parse_diagnostic_trouble_codes(
+        payload: TroubleCodeParseRequest,
+    ) -> TroubleCodeParseResponse:
+        return parse_trouble_codes(
+            confirmed=payload.responses.confirmed,
+            pending=payload.responses.pending,
+            permanent=payload.responses.permanent,
+        )
+
+    @router.post(
+        "/v1/diagnostics/readiness/parse",
+        response_model=ReadinessParseResponse,
+        responses={422: {"model": ErrorResponse}},
+        tags=["diagnostics"],
+    )
+    async def parse_emissions_readiness(
+        payload: ReadinessParseRequest,
+    ) -> ReadinessParseResponse:
+        return parse_readiness(payload.response)
 
     return router
 

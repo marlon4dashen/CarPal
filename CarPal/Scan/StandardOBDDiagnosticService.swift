@@ -1,17 +1,22 @@
 import Foundation
 
 actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitializing,
-    VehicleIdentityReading {
+    VehicleIdentityReading, TroubleCodeReading, ReadinessReading {
     private let scheduler: OBDCommandScheduler
+    private let diagnosticParsingClient: any DiagnosticParsingClient
     private let parser = ELM327Parser()
     private var supportedPIDs = Set<UInt8>()
 
-    init(scheduler: OBDCommandScheduler) {
+    init(
+        scheduler: OBDCommandScheduler,
+        diagnosticParsingClient: any DiagnosticParsingClient
+    ) {
         self.scheduler = scheduler
+        self.diagnosticParsingClient = diagnosticParsingClient
     }
 
     func initializeSession() async throws {
-        try await scheduler.withExclusiveAccess { session in
+        try await scheduler.withExclusiveLease(named: "Initialize vehicle session") { session in
             _ = try await session.execute(
                 ELMCommandRequest("ATZ", timeout: .seconds(8), acceptsAnyResponse: true)
             )
@@ -32,7 +37,7 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitia
 
     func discoverSupport() async throws -> OBDSupportReport {
         let parser = parser
-        let discovered = try await scheduler.withExclusiveAccess { session in
+        let discovered = try await scheduler.withExclusiveLease(named: "Discover capabilities") { session in
             var discovered = Set<UInt8>()
             var bases: [UInt8] = [0x00]
             while !bases.isEmpty {
@@ -68,7 +73,7 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitia
 
     func readVehicleIdentity() async throws -> OBDVehicleIdentity {
         let parser = parser
-        return try await scheduler.withExclusiveAccess { session in
+        return try await scheduler.withExclusiveLease(named: "Read vehicle identity") { session in
             var supportedModes: [Int] = []
             let protocolDescription = try? await session.execute(
                 ELMCommandRequest("ATDP", acceptsAnyResponse: true)
@@ -122,7 +127,7 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitia
     func retrieveCoreData() async throws -> RawScanData {
         let supportedPIDs = supportedPIDs
         let parser = parser
-        return try await scheduler.withExclusiveAccess { session in
+        let collected = try await scheduler.withExclusiveLease(named: "Legacy core scan") { session in
             var values: [SensorMetric: Double] = [:]
 
             values[.engineRPM] = try await Self.readMetric(
@@ -155,9 +160,6 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitia
             let dtcResponse = try await session.execute(
                 ELMCommandRequest("03", allowsNoData: true)
             )
-            let troubleCodes = Self.isNoData(dtcResponse)
-                ? []
-                : parser.troubleCodes(from: dtcResponse)
             let fuelSystemStatus = try await Self.readFuelSystemStatus(
                 supportedPIDs: supportedPIDs,
                 parser: parser,
@@ -170,14 +172,62 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitia
                 !Self.isNoData($0) && parser.payload(for: 0x02, pid: 0x02, in: $0) != nil
             } ?? false
 
-            return RawScanData(
+            return LegacyScanCollection(
                 values: values.compactMapValues { $0 },
-                troubleCodes: troubleCodes,
-                troubleCodesAvailable: true,
+                confirmedDTCResponse: dtcResponse,
                 fuelSystemStatus: fuelSystemStatus,
                 freezeFrameAvailable: freezeFrameAvailable
             )
         }
+        let parsedCodes = try await diagnosticParsingClient.parseTroubleCodes(
+            APITroubleCodeParseRequest(
+                responses: APIRawTroubleCodeResponses(
+                    confirmed: collected.confirmedDTCResponse,
+                    pending: "NO DATA",
+                    permanent: "NO DATA"
+                )
+            )
+        )
+        return RawScanData(
+            values: collected.values,
+            troubleCodes: parsedCodes.report.confirmed,
+            troubleCodesAvailable: true,
+            fuelSystemStatus: collected.fuelSystemStatus,
+            freezeFrameAvailable: collected.freezeFrameAvailable
+        )
+    }
+
+    func readTroubleCodes() async throws -> TroubleCodeReport {
+        let responses = try await scheduler.withExclusiveLease(named: "Read trouble codes") { session in
+            let confirmed = try await session.execute(
+                ELMCommandRequest("03", allowsNoData: true)
+            )
+            let pending = try await session.execute(
+                ELMCommandRequest("07", allowsNoData: true)
+            )
+            let permanent = try await session.execute(
+                ELMCommandRequest("0A", allowsNoData: true)
+            )
+            return APIRawTroubleCodeResponses(
+                confirmed: confirmed,
+                pending: pending,
+                permanent: permanent
+            )
+        }
+        return try await diagnosticParsingClient.parseTroubleCodes(
+            APITroubleCodeParseRequest(responses: responses)
+        ).report
+    }
+
+    func readReadiness() async throws -> ReadinessReport {
+        let response = try await scheduler.withExclusiveLease(named: "Read emissions readiness") { session in
+            try await session.execute(
+                ELMCommandRequest("0101", allowsNoData: true)
+            )
+        }
+        return try await diagnosticParsingClient.parseReadiness(
+            APIReadinessParseRequest(response: response)
+        ).report
     }
 
     nonisolated private static func readMetric(
@@ -245,4 +295,11 @@ actor StandardOBDDiagnosticService: ScanDiagnosticCapabilities, OBDSessionInitia
     nonisolated private static func isNoData(_ response: String) -> Bool {
         response.localizedCaseInsensitiveContains("NO DATA")
     }
+}
+
+private struct LegacyScanCollection: Sendable {
+    let values: [SensorMetric: Double]
+    let confirmedDTCResponse: String
+    let fuelSystemStatus: String?
+    let freezeFrameAvailable: Bool
 }

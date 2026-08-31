@@ -24,7 +24,8 @@ cloud.
 
 The iPhone owns adapter discovery, BLE/ELM transport, serialized OBD commands,
 capability services, scan sequencing, local vehicle profiles, and final summary
-history. It sends normalized observations rather than raw ELM text.
+history. For standalone DTC and readiness tools, it sends bounded raw ELM
+responses to versioned backend parsing endpoints and displays normalized results.
 
 ## Backend
 
@@ -37,8 +38,9 @@ history. It sends normalized observations rather than raw ELM text.
 * Quality: Ruff and strict mypy
 * Database: none for the MVP foundation
 
-The backend owns vPIC integration, provider normalization, provenance and
-confirmation metadata, diagnostic-profile resolution, and eventually deterministic Quick and
+The backend owns standard diagnostic parsing, the versioned DTC knowledge
+catalog, vPIC integration, provider normalization, provenance and confirmation
+metadata, diagnostic-profile resolution, and eventually deterministic Quick and
 Health Assessment rules. External services sit behind provider ports so tests
 and local development do not depend on live network access.
 
@@ -66,8 +68,10 @@ Milestone 4 provides:
 * `GET /health`
 * `POST /v1/vehicle-identification/decode`
 * `POST /v1/diagnostic-profiles/resolve`
+* `POST /v1/diagnostics/trouble-codes/parse`
+* `POST /v1/diagnostics/readiness/parse`
 
-Later milestones add read-only tool enrichment, Quick Assessment, and Health
+Later milestones add remaining read-only tools, Quick Assessment, and Health
 Scan session APIs. All contracts are schema-versioned. VIN is used only for the
 active provider request and is excluded from application logs and error bodies.
 

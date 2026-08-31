@@ -55,9 +55,20 @@ protocol ELMCommandExecuting: Sendable {
     func execute(_ request: ELMCommandRequest) async throws -> String
 }
 
-protocol ScanDiagnosticCapabilities: Sendable {
-    func initializeSession() async throws
+protocol OBDCapabilityDiscovering: Sendable {
     func discoverSupport() async throws -> OBDSupportReport
+}
+
+protocol TroubleCodeReading: Sendable {
+    func readTroubleCodes() async throws -> TroubleCodeReport
+}
+
+protocol ReadinessReading: Sendable {
+    func readReadiness() async throws -> ReadinessReport
+}
+
+protocol ScanDiagnosticCapabilities: OBDCapabilityDiscovering, Sendable {
+    func initializeSession() async throws
     func retrieveCoreData() async throws -> RawScanData
 }
 
@@ -95,13 +106,14 @@ actor OBDCommandScheduler {
     private let session: OBDCommandSession
     private var isLocked = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
+    private(set) var activeOperationName: String?
 
     init(executor: any ELMCommandExecuting) {
         session = OBDCommandSession(executor: executor)
     }
 
     func execute(_ request: ELMCommandRequest) async throws -> String {
-        try await withExclusiveAccess { session in
+        try await withExclusiveLease(named: request.command) { session in
             try await session.execute(request)
         }
     }
@@ -109,8 +121,21 @@ actor OBDCommandScheduler {
     func withExclusiveAccess<Result: Sendable>(
         _ operation: @Sendable (OBDCommandSession) async throws -> Result
     ) async throws -> Result {
+        try await withExclusiveLease(named: "Diagnostic operation", operation)
+    }
+
+    func withExclusiveLease<Result: Sendable>(
+        named operationName: String,
+        _ operation: @Sendable (OBDCommandSession) async throws -> Result
+    ) async throws -> Result {
+        try Task.checkCancellation()
         await acquire()
-        defer { release() }
+        activeOperationName = operationName
+        defer {
+            activeOperationName = nil
+            release()
+        }
+        try Task.checkCancellation()
         return try await operation(session)
     }
 
@@ -192,7 +217,8 @@ enum MockScanScenario: String, CaseIterable, Sendable {
 
 @MainActor
 final class ScriptedMockAdapter: BluetoothAdapterClient, ScanDiagnosticCapabilities,
-    OBDSessionInitializing, VehicleIdentityReading, @unchecked Sendable {
+    OBDSessionInitializing, VehicleIdentityReading, TroubleCodeReading, ReadinessReading,
+    @unchecked Sendable {
     private enum MockError: Error {
         case connectionInterrupted
     }
@@ -279,6 +305,38 @@ final class ScriptedMockAdapter: BluetoothAdapterClient, ScanDiagnosticCapabilit
         )
     }
 
+    func readTroubleCodes() async throws -> TroubleCodeReport {
+        try await pause()
+        guard scenario != .connectionFailure else { throw MockError.connectionInterrupted }
+        guard scenario == .serviceSoon else { return TroubleCodeReport() }
+        return TroubleCodeReport(
+            confirmed: [
+                DiagnosticTroubleCode(code: "P0171", summary: "System too lean (bank 1)")
+            ],
+            pending: [
+                DiagnosticTroubleCode(code: "P0300", summary: "Random or multiple cylinder misfire detected")
+            ]
+        )
+    }
+
+    func readReadiness() async throws -> ReadinessReport {
+        try await pause()
+        guard scenario != .connectionFailure else { throw MockError.connectionInterrupted }
+        return ReadinessReport(
+            isMILOn: scenario == .serviceSoon,
+            confirmedDTCCount: scenario == .serviceSoon ? 1 : 0,
+            ignitionType: .spark,
+            monitors: [
+                ReadinessMonitor(id: "misfire", name: "Misfire", isComplete: true),
+                ReadinessMonitor(id: "fuelSystem", name: "Fuel system", isComplete: true),
+                ReadinessMonitor(id: "components", name: "Comprehensive components", isComplete: true),
+                ReadinessMonitor(id: "catalyst", name: "Catalyst", isComplete: scenario != .incompleteData),
+                ReadinessMonitor(id: "oxygenSensor", name: "Oxygen sensor", isComplete: true),
+                ReadinessMonitor(id: "evaporativeSystem", name: "Evaporative system", isComplete: scenario != .incompleteData)
+            ]
+        )
+    }
+
     func readVehicleIdentity() async throws -> OBDVehicleIdentity {
         try await pause()
         return OBDVehicleIdentity(
@@ -300,27 +358,38 @@ final class VehicleIntegration {
     let sessionManager: AdapterSessionManager
     let diagnostics: any ScanDiagnosticCapabilities
     let identityReader: any VehicleIdentityReading
+    let troubleCodeReader: any TroubleCodeReading
+    let readinessReader: any ReadinessReading
 
     init(
         adapterClient: any BluetoothAdapterClient,
         diagnostics: any ScanDiagnosticCapabilities,
         initializer: any OBDSessionInitializing,
-        identityReader: any VehicleIdentityReading
+        identityReader: any VehicleIdentityReading,
+        troubleCodeReader: any TroubleCodeReading,
+        readinessReader: any ReadinessReading
     ) {
         sessionManager = AdapterSessionManager(client: adapterClient, initializer: initializer)
         self.diagnostics = diagnostics
         self.identityReader = identityReader
+        self.troubleCodeReader = troubleCodeReader
+        self.readinessReader = readinessReader
     }
 
     static func live() -> VehicleIntegration {
         let client = CoreBluetoothOBDClient()
         let scheduler = OBDCommandScheduler(executor: client)
-        let service = StandardOBDDiagnosticService(scheduler: scheduler)
+        let service = StandardOBDDiagnosticService(
+            scheduler: scheduler,
+            diagnosticParsingClient: BackendConfiguration.diagnosticParsingClient
+        )
         return VehicleIntegration(
             adapterClient: client,
             diagnostics: service,
             initializer: service,
-            identityReader: service
+            identityReader: service,
+            troubleCodeReader: service,
+            readinessReader: service
         )
     }
 
@@ -333,7 +402,9 @@ final class VehicleIntegration {
             adapterClient: mock,
             diagnostics: mock,
             initializer: mock,
-            identityReader: mock
+            identityReader: mock,
+            troubleCodeReader: mock,
+            readinessReader: mock
         )
     }
 }

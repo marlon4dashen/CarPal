@@ -1,0 +1,27 @@
+{
+  "schema_version": "1",
+  "catalog_version": "1.0.0",
+  "fallback_summary": "Vehicle-reported diagnostic trouble code",
+  "entries": [
+    {
+      "code": "P0171",
+      "summary": "System too lean (bank 1)",
+      "scope": "generic"
+    },
+    {
+      "code": "P0172",
+      "summary": "System too rich (bank 1)",
+      "scope": "generic"
+    },
+    {
+      "code": "P0300",
+      "summary": "Random or multiple cylinder misfire detected",
+      "scope": "generic"
+    },
+    {
+      "code": "P0420",
+      "summary": "Catalyst system efficiency below threshold (bank 1)",
+      "scope": "generic"
+    }
+  ]
+}

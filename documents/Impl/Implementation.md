@@ -43,11 +43,12 @@ The following decisions are fixed for the MVP:
   workspaces: `Scans` and `Diagnostic Tools`.
 * Standalone tools are implemented before intelligent scans. Quick Scan and
   Health Scan consume their capability services instead of duplicating OBD
-  commands and parsers.
+  command collection.
 * The phone owns Bluetooth, ELM command execution, sample sequencing, local
   persistence, and UI state.
-* The backend owns VIN-provider integration, diagnostic profile resolution,
-  rule application, findings, assessment policy, and explanation policy.
+* The backend owns standard diagnostic response parsing, versioned knowledge
+  catalogs, VIN-provider integration, diagnostic profile resolution, rule
+  application, findings, assessment policy, and explanation policy.
 * Production does not retain raw Health Scan telemetry after the active session.
 * Clear Codes, active tests, broad enhanced manufacturer diagnostics, and
   user-facing raw-session export remain outside this MVP.
@@ -135,8 +136,8 @@ The architecture follows these dependency directions:
 * UI depends on feature coordinators and domain contracts, not raw ELM text.
 * Diagnostic tools and scan workflows depend on capability protocols.
 * Capability implementations depend on one shared serialized command scheduler.
-* Parsers convert responses into canonical observations before data reaches a
-  screen, workflow, or network client.
+* Capability services collect bounded raw ELM responses and send them through
+  versioned backend parsing contracts before data reaches a screen or workflow.
 * Quick Scan and Health Scan may compose capabilities but must not reimplement
   their commands or parsing.
 * The mobile app consumes backend profile decisions; it does not decide Health
@@ -435,7 +436,7 @@ responses, and disconnected sessions are typed operational failures.
 ## 13. Standalone Diagnostic Tools
 
 Tools are delivered before intelligent scans because they validate the shared
-transport, parser, and canonical-data layers independently.
+transport, backend parser, knowledge-catalog, and canonical-data layers independently.
 
 Recommended order:
 
@@ -526,7 +527,8 @@ The backend owns:
 * VIN decode provider abstraction and vPIC integration
 * Provider-field normalization, warnings, provenance, and confirmation state
 * Vehicle diagnostic profile registry and resolver
-* DTC knowledge and known Mode 06 interpretation data
+* Standard DTC/readiness parsing, versioned DTC knowledge, and known Mode 06
+  interpretation data
 * Quick Scan bundle validation and deterministic findings
 * Health Scan session creation, deduplication, rolling windows, and finalization
 * Operating-condition classification
@@ -913,6 +915,10 @@ mocked adapter reaches `vehicleReady`; registration completes from OBD VIN,
 backend decode, confirmation, and local save.
 
 ### Milestone 6: Shared diagnostics and two-workspace home
+
+Status: implemented across the app, backend, and scripted adapter. The phone
+collects raw responses while the backend parses DTC/readiness data and enriches
+DTCs from a versioned JSON catalog. Physical hardware validation remains ongoing.
 
 * Add the `Scans` and `Diagnostic Tools` workspace switch below the vehicle card.
 * Implement the serialized scheduler and exclusive operation leases.
