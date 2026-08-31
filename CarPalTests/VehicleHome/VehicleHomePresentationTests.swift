@@ -3,6 +3,11 @@ import Testing
 @testable import CarPal
 
 struct VehicleHomePresentationTests {
+    @Test
+    func homeExposesTwoNamedWorkspaces() {
+        #expect(VehicleHomeWorkspace.allCases.map(\.title) == ["Scans", "Diagnostic Tools"])
+    }
+
     @Test(
         "Only a vehicle-ready adapter permits scanning",
         arguments: [

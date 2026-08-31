@@ -72,6 +72,8 @@ private struct VehicleAppFlow: View {
                         onScan: startScan,
                         onEdit: { showsEditVehicle = true },
                         onHistory: { path.append(.history) },
+                        onTroubleCodes: { openDiagnosticTool(.troubleCodes) },
+                        onReadiness: { openDiagnosticTool(.readiness) },
                         onSettings: { presentedDestination = .settings }
                     )
                 } else {
@@ -102,6 +104,9 @@ private struct VehicleAppFlow: View {
                 message: Text(destination.message),
                 dismissButton: .default(Text("OK"))
             )
+        }
+        .task {
+            await openDebugDiagnosticDestinationIfRequested()
         }
     }
 
@@ -134,6 +139,10 @@ private struct VehicleAppFlow: View {
             ScanHistoryView(results: historyStore.results) { id in
                 path.append(.result(id))
             }
+        case .troubleCodes:
+            TroubleCodesView(reader: vehicleIntegration.troubleCodeReader)
+        case .readiness:
+            ReadinessView(reader: vehicleIntegration.readinessReader)
         }
     }
 
@@ -164,6 +173,25 @@ private struct VehicleAppFlow: View {
     private func startScan() {
         guard adapterState.isReadyForScan else { return }
         path.append(.scan)
+    }
+
+    private func openDiagnosticTool(_ route: VehicleAppRoute) {
+        guard adapterState.isReadyForScan else { return }
+        path.append(route)
+    }
+
+    private func openDebugDiagnosticDestinationIfRequested() async {
+#if DEBUG
+        guard path.isEmpty,
+              DebugLaunchConfiguration.usesMockAdapter,
+              let route = DebugLaunchConfiguration.diagnosticRoute else { return }
+        do {
+            try await vehicleIntegration.sessionManager.prepareConnection()
+            path.append(route)
+        } catch {
+            // The destination remains closed so Vehicle Home can present connection recovery.
+        }
+#endif
     }
 
     private var latestAssessment: AssessmentPreview? {
@@ -290,9 +318,16 @@ private enum DebugLaunchConfiguration {
     static var assessment: AssessmentPreview? {
         nil
     }
+
+    static var diagnosticRoute: VehicleAppRoute? {
+        if arguments.contains("-openMockTroubleCodes") { return .troubleCodes }
+        if arguments.contains("-openMockReadiness") { return .readiness }
+        return nil
+    }
 #else
     static let usesMockAdapter = false
     static let assessment: AssessmentPreview? = nil
+    static let diagnosticRoute: VehicleAppRoute? = nil
 #endif
 }
 
@@ -320,4 +355,6 @@ private enum VehicleAppRoute: Hashable {
     case scan
     case result(UUID)
     case history
+    case troubleCodes
+    case readiness
 }

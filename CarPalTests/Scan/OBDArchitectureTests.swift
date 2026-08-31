@@ -37,7 +37,8 @@ struct OBDArchitectureTests {
     func diagnosticServiceInitializesELMInsideOneOrderedOperation() async throws {
         let executor = RecordingELMExecutor(responses: ["ATI": "ELM327 v1.5"])
         let service = StandardOBDDiagnosticService(
-            scheduler: OBDCommandScheduler(executor: executor)
+            scheduler: OBDCommandScheduler(executor: executor),
+            diagnosticParsingClient: diagnosticClient()
         )
 
         try await service.initializeSession()
@@ -53,12 +54,13 @@ struct OBDArchitectureTests {
             "ATDP": "AUTO, ISO 15765-4 (CAN 11/500)",
             "0100": "41 00 18 18 00 01",
             "0900": "49 00 50 40 00 00",
-            "0902": "0: 49 02 01 4A 54 4A 59 41 52\n1: 42 5A 30 4C 32 30 30 30\n2: 30 31",
+            "0902": "0: 49 02 01 4A 54 4A 59 41 52\n1: 42 5A 30 4C 32 30 30 30\n2: 30 30 31",
             "0904": "49 04 01 43 41 4C 2D 54 45 53 54",
             "090A": "49 0A 01 45 43 4D"
         ])
         let service = StandardOBDDiagnosticService(
-            scheduler: OBDCommandScheduler(executor: executor)
+            scheduler: OBDCommandScheduler(executor: executor),
+            diagnosticParsingClient: diagnosticClient()
         )
 
         let identity = try await service.readVehicleIdentity()
@@ -88,8 +90,12 @@ struct OBDArchitectureTests {
             "0103": "41 03 02",
             "0202": "42 02 00"
         ])
+        let backend = diagnosticClient(
+            codes: [APIParsedDiagnosticCode(code: "P0171", summary: "Lean", state: .confirmed)]
+        )
         let service = StandardOBDDiagnosticService(
-            scheduler: OBDCommandScheduler(executor: executor)
+            scheduler: OBDCommandScheduler(executor: executor),
+            diagnosticParsingClient: backend
         )
 
         let support = try await service.discoverSupport()
@@ -103,7 +109,110 @@ struct OBDArchitectureTests {
         #expect(data.troubleCodes.map(\.code) == ["P0171"])
         #expect(data.fuelSystemStatus == "Closed loop")
         #expect(data.freezeFrameAvailable)
+        #expect(await backend.troubleCodeRequests.first?.responses.confirmed == "43 01 71 00 00")
     }
+
+    @Test
+    func standaloneTroubleCodeCapabilityReadsAllEvidenceStatesUnderOneLease() async throws {
+        let executor = RecordingELMExecutor(responses: [
+            "03": "43 01 71",
+            "07": "47 03 00",
+            "0A": "4A 04 20"
+        ])
+        let backend = diagnosticClient(codes: [
+            APIParsedDiagnosticCode(code: "P0171", summary: "Lean", state: .confirmed),
+            APIParsedDiagnosticCode(code: "P0300", summary: "Misfire", state: .pending),
+            APIParsedDiagnosticCode(code: "P0420", summary: "Catalyst", state: .permanent)
+        ])
+        let service = StandardOBDDiagnosticService(
+            scheduler: OBDCommandScheduler(executor: executor),
+            diagnosticParsingClient: backend
+        )
+
+        let report = try await service.readTroubleCodes()
+
+        #expect(report.confirmed.map(\.code) == ["P0171"])
+        #expect(report.pending.map(\.code) == ["P0300"])
+        #expect(report.permanent.map(\.code) == ["P0420"])
+        #expect(executor.commands == ["03", "07", "0A"])
+        #expect(await backend.troubleCodeRequests.first?.responses.pending == "47 03 00")
+    }
+
+    @Test
+    func standaloneReadinessCapabilityDecodesMode01PID01() async throws {
+        let executor = RecordingELMExecutor(responses: [
+            "0101": "41 01 00 E0 84 00"
+        ])
+        let backend = diagnosticClient(
+            readiness: APIReadinessParseResponse(
+                schemaVersion: "1",
+                isMILOn: false,
+                confirmedDTCCount: 0,
+                ignitionType: .spark,
+                monitors: [
+                    APIReadinessMonitor(id: "misfire", name: "Misfire", isComplete: true),
+                    APIReadinessMonitor(id: "fuelSystem", name: "Fuel system", isComplete: true),
+                    APIReadinessMonitor(id: "components", name: "Components", isComplete: true),
+                    APIReadinessMonitor(id: "catalyst", name: "Catalyst", isComplete: true),
+                    APIReadinessMonitor(id: "oxygenSensor", name: "Oxygen sensor", isComplete: true)
+                ]
+            )
+        )
+        let service = StandardOBDDiagnosticService(
+            scheduler: OBDCommandScheduler(executor: executor),
+            diagnosticParsingClient: backend
+        )
+
+        let report = try await service.readReadiness()
+
+        #expect(!report.isMILOn)
+        #expect(report.confirmedDTCCount == 0)
+        #expect(report.monitors.count == 5)
+        #expect(report.incompleteMonitorCount == 0)
+        #expect(await backend.readinessRequests.first?.response == "41 01 00 E0 84 00")
+    }
+
+    @Test
+    func schedulerKeepsMultiCommandOperationLeasesContiguous() async throws {
+        let executor = RecordingELMExecutor(delay: .milliseconds(10))
+        let scheduler = OBDCommandScheduler(executor: executor)
+
+        async let first: Void = scheduler.withExclusiveLease(named: "First") { session in
+            _ = try await session.execute(ELMCommandRequest("A1"))
+            _ = try await session.execute(ELMCommandRequest("A2"))
+        }
+        async let second: Void = scheduler.withExclusiveLease(named: "Second") { session in
+            _ = try await session.execute(ELMCommandRequest("B1"))
+            _ = try await session.execute(ELMCommandRequest("B2"))
+        }
+        _ = try await (first, second)
+
+        #expect(
+            executor.commands == ["A1", "A2", "B1", "B2"]
+                || executor.commands == ["B1", "B2", "A1", "A2"]
+        )
+        #expect(executor.maximumConcurrentCommands == 1)
+    }
+}
+
+private func diagnosticClient(
+    codes: [APIParsedDiagnosticCode] = [],
+    readiness: APIReadinessParseResponse = APIReadinessParseResponse(
+        schemaVersion: "1",
+        isMILOn: false,
+        confirmedDTCCount: 0,
+        ignitionType: .spark,
+        monitors: []
+    )
+) -> FixtureDiagnosticParsingClient {
+    FixtureDiagnosticParsingClient(
+        troubleCodeResponse: APITroubleCodeParseResponse(
+            schemaVersion: "1",
+            catalogVersion: "test-1",
+            codes: codes
+        ),
+        readinessResponse: readiness
+    )
 }
 
 @MainActor

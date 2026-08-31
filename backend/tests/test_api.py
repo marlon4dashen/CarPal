@@ -133,6 +133,64 @@ def test_profile_can_be_resolved_after_user_correction(
     assert response.json()["eligibility"]["health_scan"] == "supported"
 
 
+def test_trouble_code_parsing_endpoint_returns_normalized_evidence() -> None:
+    response = _request(
+        FakeVINProvider({}),
+        "POST",
+        "/v1/diagnostics/trouble-codes/parse",
+        {
+            "schema_version": "1",
+            "responses": {
+                "confirmed": "43 01 71",
+                "pending": "NO DATA",
+                "permanent": "4A 04 20",
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["catalog_version"] == "1.0.0"
+    assert response.json()["codes"] == [
+        {
+            "code": "P0171",
+            "summary": "System too lean (bank 1)",
+            "state": "confirmed",
+        },
+        {
+            "code": "P0420",
+            "summary": "Catalyst system efficiency below threshold (bank 1)",
+            "state": "permanent",
+        },
+    ]
+
+
+def test_readiness_parsing_endpoint_returns_normalized_monitors() -> None:
+    response = _request(
+        FakeVINProvider({}),
+        "POST",
+        "/v1/diagnostics/readiness/parse",
+        {"schema_version": "1", "response": "41 01 00 E0 84 00"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_mil_on"] is False
+    assert body["ignition_type"] == "spark"
+    assert len(body["monitors"]) == 5
+
+
+def test_malformed_diagnostic_response_uses_typed_error_envelope() -> None:
+    response = _request(
+        FakeVINProvider({}),
+        "POST",
+        "/v1/diagnostics/readiness/parse",
+        {"schema_version": "1", "response": "OK"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "DIAGNOSTIC_RESPONSE_INVALID"
+
+
 def _request(
     provider: Any,
     method: str,

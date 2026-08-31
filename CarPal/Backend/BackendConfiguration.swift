@@ -10,6 +10,10 @@ enum BackendConfiguration {
         return URLSessionVehicleIdentificationClient(baseURL: baseURL)
     }
 
+    static var diagnosticParsingClient: any DiagnosticParsingClient {
+        URLSessionDiagnosticParsingClient(baseURL: baseURL)
+    }
+
     private static var baseURL: URL {
         if let configured = ProcessInfo.processInfo.environment["CARPAL_BACKEND_URL"],
            let url = URL(string: configured) {

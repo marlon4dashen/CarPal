@@ -31,3 +31,26 @@ class DependencyResponseError(ServiceError):
             status_code=502,
             retryable=True,
         )
+
+
+class DiagnosticResponseError(ServiceError):
+    def __init__(
+        self,
+        message: str = "The vehicle returned diagnostic data that could not be parsed.",
+    ) -> None:
+        super().__init__(
+            code="DIAGNOSTIC_RESPONSE_INVALID",
+            message=message,
+            status_code=422,
+            retryable=True,
+        )
+
+
+class DiagnosticDataUnavailableError(ServiceError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="DIAGNOSTIC_DATA_UNAVAILABLE",
+            message="The vehicle did not report data for this diagnostic capability.",
+            status_code=422,
+            retryable=True,
+        )

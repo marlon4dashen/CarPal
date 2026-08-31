@@ -37,7 +37,7 @@ struct ELM327ParserTests {
         let response = """
         0: 49 02 01 4A 54 4A 59 41 52
         1: 42 5A 30 4C 32 30 30 30
-        2: 30 31
+        2: 30 30 31
         """
 
         #expect(parser.vehicleInformationStrings(pid: 0x02, response: response) == [
@@ -79,17 +79,4 @@ struct ELM327ParserTests {
         #expect(payload == [0x1A, 0xF8])
     }
 
-    @Test
-    func parsesAndDeduplicatesDiagnosticTroubleCodes() {
-        let codes = parser.troubleCodes(from: "43 01 71 03 00 00 00")
-        #expect(codes.map(\.code) == ["P0171", "P0300"])
-        #expect(codes.first?.summary == "System too lean (bank 1)")
-    }
-
-    @Test
-    func combinesTroubleCodesReportedByMultipleECUs() {
-        let response = "7E8 04 43 01 71 00 00\n7E9 04 43 03 00 00 00"
-        let codes = parser.troubleCodes(from: response)
-        #expect(codes.map(\.code) == ["P0171", "P0300"])
-    }
 }

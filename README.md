@@ -16,6 +16,9 @@ plain-language vehicle health summary for non-technical drivers.
 - Unregister the saved vehicle and clear its scan history to restart registration.
 - Check and connect to a Veepeak OBDCheck BLE adapter using CoreBluetooth.
 - Initialize an ELM327 session and retrieve standard Mode 01 and Mode 03 data.
+- Switch between guided scans and standalone diagnostic tools from Vehicle Home.
+- Independently read confirmed, pending, and permanent trouble codes plus
+  emissions-readiness monitor state.
 - Show a seven-stage scan, local scan history, and a conservative health result.
 - Store vehicle and scan data locally with SwiftData.
 

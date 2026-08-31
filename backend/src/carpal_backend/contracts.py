@@ -129,6 +129,59 @@ class DiagnosticProfileResolveResponse(APIModel):
     eligibility: DiagnosticEligibility
 
 
+class RawTroubleCodeResponses(APIModel):
+    confirmed: str = Field(min_length=1, max_length=32_000)
+    pending: str = Field(min_length=1, max_length=32_000)
+    permanent: str = Field(min_length=1, max_length=32_000)
+
+
+class TroubleCodeParseRequest(APIModel):
+    schema_version: Literal["1"] = SCHEMA_VERSION
+    responses: RawTroubleCodeResponses
+
+
+class DiagnosticCodeState(StrEnum):
+    CONFIRMED = "confirmed"
+    PENDING = "pending"
+    PERMANENT = "permanent"
+
+
+class ParsedDiagnosticCode(APIModel):
+    code: str = Field(pattern=r"^[PCBU][0-9A-F]{4}$")
+    summary: str = Field(min_length=1, max_length=200)
+    state: DiagnosticCodeState
+
+
+class TroubleCodeParseResponse(APIModel):
+    schema_version: Literal["1"] = SCHEMA_VERSION
+    catalog_version: str
+    codes: list[ParsedDiagnosticCode] = Field(default_factory=list, max_length=768)
+
+
+class ReadinessParseRequest(APIModel):
+    schema_version: Literal["1"] = SCHEMA_VERSION
+    response: str = Field(min_length=1, max_length=32_000)
+
+
+class ReadinessIgnitionType(StrEnum):
+    SPARK = "spark"
+    COMPRESSION = "compression"
+
+
+class ReadinessMonitorResult(APIModel):
+    id: str = Field(pattern=r"^[a-z][A-Za-z0-9]*$")
+    name: str = Field(min_length=1, max_length=100)
+    is_complete: bool
+
+
+class ReadinessParseResponse(APIModel):
+    schema_version: Literal["1"] = SCHEMA_VERSION
+    is_mil_on: bool
+    confirmed_dtc_count: int = Field(ge=0, le=127)
+    ignition_type: ReadinessIgnitionType
+    monitors: list[ReadinessMonitorResult] = Field(default_factory=list, max_length=32)
+
+
 class HealthResponse(APIModel):
     status: Literal["ok"] = "ok"
     service: Literal["carpal-backend"] = "carpal-backend"
